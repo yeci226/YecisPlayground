@@ -19,9 +19,4 @@ You are free to make changes to this project, just include the original bot and 
 
 # Install dependencies.
 npm install / yarn install
-
-# Build Package
-cd node_modules/hoyoapi
-npm install / yarn install
-npm run build / yarn build
 ```
