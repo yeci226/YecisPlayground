@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/static/css/index.css" />
+    <title>Index Page</title>
+  </head>
+  <body>
+    <div class="title-container">
+      <h1 class="title" id="time">Hello, World!</h1>
+    </div>
+  </body>
+
+  <script>
+    document.getElementById("time").innerText =
+      "Hello world! \nThe time is " +
+      new Date().toLocaleString("zh-Hant", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+  </script>
+</html>
