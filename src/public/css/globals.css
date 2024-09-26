@@ -1,0 +1,39 @@
+@font-face {
+    font-family: 'YinPing';
+    src: url('../fonts/YinPing.ttf') format('truetype');
+}
+
+:root {
+  /* 定義亮色主題變量 */
+  --bg: 0.97 0.01 275; /* 淺灰背景 */
+  --bc: 0.2 0.01 275; /* 深灰文字 */
+  --a: 0.8763563318872611 0.07936695661761213 179.84149083374814;
+  --tw-text-opacity: 1;
+  --fallback-bg: oklch(var(--bg) / 1);
+  --fallback-bc: oklch(var(--bc) / 1);
+  --fallback-a: oklch(var(--a)/var(--tw-text-opacity));
+}
+
+[data-theme="dark"] {
+  /* 定義暗色主題變量 */
+  --bg: 0.2 0.01 275; /* 深灰背景 */
+  --bc: 0.9 0.01 275; /* 淺灰文字 */
+  --fallback-bg: oklch(var(--bg) / 1);
+  --fallback-bc: oklch(var(--bc) / 1);
+}
+
+:root, [data-theme] {
+  background-color: var(--fallback-bg);
+  color: var(--fallback-bc);
+  font-family: 'YinPing', sans-serif; 
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-y: auto;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}

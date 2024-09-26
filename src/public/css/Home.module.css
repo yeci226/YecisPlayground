@@ -1,0 +1,69 @@
+.contentContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.contentContainer h1 {
+    color: var(--fallback-bc);
+    font-size: 3rem;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.contentContainer a {
+    color: var(--fallback-bc);
+    font-size: 1.5rem;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.themeSwitchContainer {
+    position: fixed; 
+    top: 10px;
+    right: 1vw;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin: auto; 
+    width: auto; 
+    max-width: 100%; 
+    height: fit-content;
+    border: 1px solid var(--fallback-bc);
+    border-radius: 15px;
+    padding: 10px;
+}
+
+.themeSwitchContainer button {
+    margin: 0;
+    padding: 0 5px;
+    border: none;
+    cursor: pointer;
+    background: none;
+    color: var(--fallback-bc);
+}
+
+.themeSwitchContainer button:hover { 
+    cursor: pointer;
+}
+
+/* 媒體查詢示例 */
+@media (max-width: 600px) {
+   .themeSwitchContainer {
+       flex-direction: column; /* 在小屏幕上垂直排列 */
+       width: 90%; /* 在小屏幕上設置更小的寬度 */
+   }
+}
+
+.title:hover {
+   animation: jelly .6s ease;
+}
+
+@keyframes jelly {
+   from { transform: scale(1,1); }
+   to { transform: scale(1,1); }
+}
