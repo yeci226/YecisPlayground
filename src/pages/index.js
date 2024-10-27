@@ -24,14 +24,13 @@ export default function Home() {
   return (
     <div>
       <Head>
-        <meta charSet="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Index Page</title>
+        <title>Yeci Playground</title>
       </Head>
 
       <div className={styles.contentContainer}>
         <h1>Hello, World!</h1>
         <a id="time"></a>
+        <a id="stayedTime"></a>
       </div>
     </div>
   );

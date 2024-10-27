@@ -1,0 +1,38 @@
+.header {
+    position: fixed;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: fit-content;
+    gap: 20px;
+    margin-top: 10px;
+    background: none;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.header a {
+    text-decoration: none;
+    color: var(--fallback-bc);
+    position: relative; 
+    transition: color 0.3s ease, border-bottom 0.3s ease; 
+}
+
+.header a:hover {
+    color: #86AB89;
+}
+
+.header a.active {
+    border-bottom: 3px solid #86AB89; 
+    color: #86AB89;
+}
+
+.header a.active span {
+    margin-right: 5px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

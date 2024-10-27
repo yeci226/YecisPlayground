@@ -20,4 +20,15 @@
     font-size: 1.5rem;
     text-align: center;
     line-height: 1.5;
+    animation: 1s steps(10) 0s 1 normal none running typing, 0.75s step-end 0s infinite normal none running blink-caret
+}
+
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: var(--fallback-bc); }
 }
