@@ -2,7 +2,6 @@ import Head from "next/head";
 import { useEffect, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import styles from "../../public/css/Player.module.css";
-import { videoId } from "@gonetone/get-youtube-id-by-url";
 import fetch from "node-fetch";
 
 export default function Home() {
@@ -110,7 +109,7 @@ export default function Home() {
     }
 
     if (inputValue) {
-      fetchVideoTitle();
+      fetchVideoTitle(inputValue);
       setPlaylist([...playlist, inputValue]);
       if (playlist.length === 0) {
         // 如果是第一首歌，立即開始播放
@@ -122,20 +121,19 @@ export default function Home() {
     }
   };
 
-  const fetchVideoTitle = async () => {
-    console.log(inputValue);
-    const video_id = await videoId(inputValue);
-    console.log(video_id);
-    if (video_id) {
+  const fetchVideoTitle = async (url) => {
+    try {
       const response = await fetch(
-        `https://www.youtube.com/watch?v=${video_id}`
+        `http://localhost:5000/api/videoTitle?url=${encodeURIComponent(url)}`
       );
-      const text = await response.text();
-      const titleMatch = text.match(/<title>(.*?)<\/title>/);
-      if (titleMatch && titleMatch[1]) {
-        console.log(titleMatch[1].replace(" - YouTube", "").trim());
-        setVideoTitle(titleMatch[1].replace(" - YouTube", "").trim());
+      const data = await response.json();
+      if (response.ok) {
+        setVideoTitle(data.title);
+      } else {
+        console.error("Error fetching video title:", data.error);
       }
+    } catch (error) {
+      console.error("Network error:", error);
     }
   };
 
@@ -250,7 +248,9 @@ export default function Home() {
                         </button>
                       )}
                     </>
-                    {track.length > 50 && track.slice(0, 50) + "..."}
+                    {videoTitle.length > 50
+                      ? videoTitle.slice(0, 50) + "..."
+                      : videoTitle}
                   </li>
                 ))}
               </ul>
@@ -281,7 +281,10 @@ export default function Home() {
                     >
                       {char === " " ? "\u00A0" : char}
                     </span>
-                  ))}
+                  ))}{" "}
+                  {videoTitle.length > 50
+                    ? videoTitle.slice(0, 50) + "..."
+                    : videoTitle}
                 </div>
 
                 <div className={styles.progressContainer}>

@@ -1,237 +1,252 @@
 .contentContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  user-select: none;
 }
 
 .contentContainer h1 {
-    padding-top: 5vh;
-    color: var(--fallback-bc);
-    font-size: 2rem;
-    text-align: center;
+  padding-top: 5vh;
+  color: var(--fallback-bc);
+  font-size: 2rem;
+  text-align: center;
 }
 
 .contentContainer a {
-    color: var(--fallback-bc);
-    font-size: 1.1rem;
-    text-align: center;
+  color: var(--fallback-bc);
+  font-size: 1.1rem;
+  text-align: center;
 }
 
 .contentLower {
-    display: flex;
-    justify-content: center; /* 水平置中 */
-    align-items: center; /* 垂直置中 */
-    height: 35vh;
-    opacity: 1; /* 確保可見 */
-    transition: opacity 0.5s ease; /* 平滑過渡 */
+  display: flex;
+  justify-content: center; /* 水平置中 */
+  align-items: center; /* 垂直置中 */
+  height: 35vh;
+  opacity: 1; /* 確保可見 */
+  transition: opacity 0.5s ease; /* 平滑過渡 */
 }
 
 .audioControls input {
-    background: none;
-    border: none;
-    border-radius: 5px;
-    color: var(--fallback-bc);
-    font-size: 1.1rem;
-    margin-right: 10px;
-    outline: none; 
-    padding: 10px;
-    font-family: "YinPing", sans-serif;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--fallback-bc);
+  font-size: 1.1rem;
+  margin-right: 10px;
+  outline: none;
+  padding: 10px;
+  font-family: "YinPing", sans-serif;
 }
 
 .audioControls input.active {
-    outline: 2px solid #86AB89; 
+  outline: 2px solid #86ab89;
 }
 
 .audioControls input:focus {
-    outline: 2px solid #86AB89; 
+  outline: 2px solid #86ab89;
 }
 
 .audioControls input:not(:placeholder-shown):focus {
-    outline: 2px solid #86AB89; 
+  outline: 2px solid #86ab89;
 }
 
 .audioControls input:focus:not(:placeholder-shown) {
-    outline: 2px solid #86AB89; 
+  outline: 2px solid #86ab89;
 }
 
 .audioControls input::placeholder {
-    user-select: none;
+  user-select: none;
 }
 
 .button {
-    background: none;
-    font-size: 1.05rem;
-    border-radius: 10px;
-    color: var(--fallback-bc);
-    border: none;
-    padding: 10px 15px 10px 15px;
-    cursor: pointer;
-    user-select: none;
-    outline: 2px solid #86AB89;
-    font-family: "YinPing", sans-serif;
+  background: none;
+  font-size: 1.05rem;
+  border-radius: 10px;
+  color: var(--fallback-bc);
+  border: none;
+  padding: 10px 15px 10px 15px;
+  cursor: pointer;
+  user-select: none;
+  outline: 2px solid #86ab89;
+  font-family: "YinPing", sans-serif;
 }
 
 .playerContainer {
-    display: flex;
-    flex-direction: column;
-    margin-right: 5vw;
-    margin-top: 30px;
-    padding: 45px 45px 0 45px;
-    position: relative;
-    overflow: hidden;
-    background: none;
-    border-radius: 10px;
-    outline: 3px solid var(--fallback-bc);
-    max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  margin-right: 5vw;
+  margin-top: 30px;
+  padding: 45px 45px 0 45px;
+  position: relative;
+  overflow: hidden;
+  background: none;
+  border-radius: 10px;
+  outline: 3px solid var(--fallback-bc);
+  max-width: 100vw;
 }
 
 .playerContainer iframe {
-    width: 100%; /* 寬度填滿父容器 */
-    height: auto; /* 高度自動 */
-    aspect-ratio: 16 / 9; /* 設定 16:9 的比例 */
-    border: none;
-    border-radius: 5px;
-    pointer-events: none !important;
+  width: 100%; /* 寬度填滿父容器 */
+  height: auto; /* 高度自動 */
+  aspect-ratio: 16 / 9; /* 設定 16:9 的比例 */
+  border: none;
+  border-radius: 5px;
+  pointer-events: none !important;
 }
 
 .playerContainer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: black;
-    z-index: -1;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: black;
+  z-index: -1;
 }
 
 .trackInfo {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 30px;
 }
 
 .progressContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 30px;
 }
 
 .progressBar {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 8px;
-    background: #e0e0e0;
-    border-radius: 5px;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 5px;
 }
 
 .progressBar::-webkit-slider-thumb {
-    margin-top: -5px;
-    -webkit-appearance: none; 
-    appearance: none;
-    width: 16px; 
-    height: 16px; 
-    background: #76c7c0; 
-    border-radius: 50%; 
-    cursor: pointer;
+  margin-top: -5px;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #76c7c0;
+  border-radius: 50%;
+  cursor: pointer;
 }
 
 .progressBar::-webkit-slider-runnable-track {
-    height: 5px;
-    border-radius: 5px; 
-    background: linear-gradient(to right, #76c7c0 0%, #76c7c0 var(--value), #e0e0e0 var(--value), #e0e0e0 100%); /* 使用渐变来表示已滑过部分 */
+  height: 5px;
+  border-radius: 5px;
+  background: linear-gradient(
+    to right,
+    #76c7c0 0%,
+    #76c7c0 var(--value),
+    #e0e0e0 var(--value),
+    #e0e0e0 100%
+  ); /* 使用渐变来表示已滑过部分 */
 }
 
 @keyframes move {
-    from { background-position: -200%; }
-    to { background-position: 200%; }
+  from {
+    background-position: -200%;
+  }
+  to {
+    background-position: 200%;
+  }
 }
-  
+
 .timeDisplay {
-    display: flex;
-    justify-content: space-between;
-    width: 100%; 
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
-  
-  
+
 .volumeControl {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 10px;
-    gap: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 10px;
 }
 
 .controlPanel {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 20px;
-    gap: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px;
 }
 
 .playlistContainer {
-    max-width: 40vw;
-    margin-top: 30px;
-    padding: 20px;
-    border-radius: 10px;
-    outline: 2px solid var(--fallback-bc);
-    overflow-y: auto;
- }
+  max-width: 40vw;
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 10px;
+  outline: 2px solid var(--fallback-bc);
+  overflow-y: auto;
+}
 
 .playlistContainer h1 {
-    font-size: 1.5rem;
+  font-size: 1.5rem;
 }
 
 .playlistContainer ul {
-    list-style-type: none; 
-    padding: 0;
- }
- 
- .playlistContainer li:hover {
-    text-decoration: underline;
- }
+  list-style-type: none;
+  padding: 0;
+}
 
- .trackElement {
-    margin-top: 5px;
-    padding: 12px 12px;
-    border-radius: 15px;
-    background-color: rgb(42, 46, 50);
-    cursor: pointer;
+.playlistContainer li:hover {
+  text-decoration: underline;
+}
+
+.trackElement {
+  margin-top: 5px;
+  padding: 12px 12px;
+  border-radius: 15px;
+  background-color: rgb(42, 46, 50);
+  cursor: pointer;
 }
 
 .trackElement.active {
-    outline: 2px solid #86AB89;
+  outline: 2px solid #86ab89;
 }
 
 .trackElement.inactive {
-    outline: 2px solid var(--bc);
+  outline: 2px solid var(--bc);
 }
-  
+
 .jump {
-    display: inline-block;
+  display: inline-block;
 }
-  
+
 .animate {
-    animation: jump 0.5s forwards; 
+  animation: jump 0.5s forwards;
 }
 
 .removeButton {
-    background: transparent;
-    border: none;
+  background: transparent;
+  border: none;
 }
 
 .removeButton:hover {
-    cursor: pointer;
+  cursor: pointer;
 }
-  
+
 @keyframes jump {
-    0% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
-    100% { transform: translateY(0); }
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
