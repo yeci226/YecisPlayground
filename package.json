@@ -9,14 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "add": "^2.0.6",
     "dotenv": "^16.4.5",
     "next": "14.2.13",
     "node-fetch": "2.6.1",
     "react": "^18",
     "react-dom": "^18",
     "react-player": "^2.16.0",
-    "yarn": "^1.22.22"
+    "yarn": "^1.22.22",
+    "ytdl-core": "^4.11.5"
   },
   "devDependencies": {}
 }

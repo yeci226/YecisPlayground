@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import Head from "next/head";
-import styles from "../public/css/About.module.css";
+import styles from "../../public/css/About.module.css";
 
-export default function About() {
+export default function Hsr() {
   const typingRef = useRef(null);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function About() {
 
       <div className={styles.contentContainer}>
         <span ref={typingRef} className={styles.typing}>
-          你好！我是 Yeci
+          這裡是崩壞：星穹鐵道小工具頁面
         </span>
       </div>
     </div>

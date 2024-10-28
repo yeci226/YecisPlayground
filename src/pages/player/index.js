@@ -6,12 +6,12 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
 
-export default function Home() {
-  const text = "Hello world!";
+export default function Player() {
+  const text = "Let's play some music";
   const [animate, setAnimate] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [audioSrc, setAudioSrc] = useState("");
-  const [videoTitle, setVideoTitle] = useState("");
+  const [videoTitles, setVideoTitles] = useState([]);
   const [playing, setPlaying] = useState(false);
   const playerRef = useRef(null);
   const [duration, setDuration] = useState(0);
@@ -103,7 +103,7 @@ export default function Home() {
   };
 
   // 處理連結提交
-  const handleLinkSubmit = () => {
+  const handleLinkSubmit = async () => {
     if (!ReactPlayer.canPlay(inputValue)) {
       alert(`無法播放此連結\n${inputValue}`);
       setInputValue("");
@@ -112,6 +112,7 @@ export default function Home() {
 
     if (inputValue) {
       fetchVideoTitle(inputValue);
+
       setPlaylist([...playlist, inputValue]);
       if (playlist.length === 0) {
         // 如果是第一首歌，立即開始播放
@@ -125,23 +126,34 @@ export default function Home() {
 
   const fetchVideoTitle = async (url) => {
     try {
-      console.log(process.env);
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL
         }/api/videoTitle?url=${encodeURIComponent(url)}`
       );
       const data = await response.json();
+
       if (response.ok) {
-        setVideoTitle(data.title);
-      } else {
-        console.error("Error fetching video title:", data.error);
+        if (data.playlist) {
+          setVideoTitles((prev) => [
+            ...prev,
+            {
+              title: `播放清單 ${data.songCount} 首歌曲 ${data.title}`,
+              url,
+              thumbnail: data.thumbnail,
+            },
+          ]);
+        } else {
+          setVideoTitles((prev) => [
+            ...prev,
+            { title: data.title, url, thumbnail: data.thumbnail },
+          ]);
+        }
       }
     } catch (error) {
       console.error("Network error:", error);
     }
   };
-
   // 格式化時間為分鐘:秒數
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -151,6 +163,7 @@ export default function Home() {
 
   // 選擇曲目並播放
   const selectTrack = (index) => {
+    console.log(videoTitles[index]);
     setCurrentTrackIndex(index);
     setAudioSrc(playlist[index]);
     setPlaying(true);
@@ -237,11 +250,17 @@ export default function Home() {
                         : styles.inactive
                     }`}
                     style={{
-                      color:
-                        index === currentTrackIndex ? "#86AB89" : "#0F0F0F",
+                      color: index === currentTrackIndex ? "#86AB89" : "grey",
                     }}
                   >
                     <>
+                      {videoTitles[index] && videoTitles[index].thumbnail && (
+                        <img
+                          src={videoTitles[index].thumbnail}
+                          alt={videoTitles[index].title}
+                          className={styles.thumbnail}
+                        />
+                      )}
                       {index === currentTrackIndex ? (
                         <button className={styles.removeButton}>💎</button>
                       ) : (
@@ -253,9 +272,11 @@ export default function Home() {
                         </button>
                       )}
                     </>
-                    {videoTitle.length > 50
-                      ? videoTitle.slice(0, 50) + "..."
-                      : videoTitle}
+                    {videoTitles[index]
+                      ? videoTitles[index].title.length > 50
+                        ? videoTitles[index].title.slice(0, 50) + "..."
+                        : videoTitles[index].title
+                      : "未知歌曲"}
                   </li>
                 ))}
               </ul>
@@ -286,10 +307,14 @@ export default function Home() {
                     >
                       {char === " " ? "\u00A0" : char}
                     </span>
-                  ))}{" "}
-                  {videoTitle.length > 50
-                    ? videoTitle.slice(0, 50) + "..."
-                    : videoTitle}
+                  ))}
+                  {" - "}
+                  {videoTitles[currentTrackIndex]
+                    ? videoTitles[currentTrackIndex].title.length > 50
+                      ? videoTitles[currentTrackIndex].title.slice(0, 50) +
+                        "..."
+                      : videoTitles[currentTrackIndex].title
+                    : "未知歌曲"}
                 </div>
 
                 <div className={styles.progressContainer}>
@@ -312,7 +337,7 @@ export default function Home() {
 
                 <div className={styles.controlPanel}>
                   <button className={styles.button} onClick={playRandomTrack}>
-                    隨機播放
+                    隨機順序
                   </button>
                   <button className={styles.button} onClick={playPreviousTrack}>
                     上一首
