@@ -27,6 +27,7 @@ export default function About() {
     <div>
       <Head>
         <title>Yeci Playground</title>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
       </Head>
 
       <div className={styles.contentContainer}>

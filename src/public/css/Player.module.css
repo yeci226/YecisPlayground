@@ -206,7 +206,8 @@
 }
 
 .playlistContainer li:hover {
-  text-decoration: underline;
+  /* text-decoration: underline; */
+  cursor: default;
 }
 
 .trackElement {

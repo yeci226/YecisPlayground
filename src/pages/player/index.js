@@ -2,6 +2,7 @@ import Head from "next/head";
 import { useEffect, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import styles from "../../public/css/Player.module.css";
+import { v4 as uuidv4 } from "uuid";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
@@ -18,7 +19,7 @@ export default function Player() {
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.1);
   const [playlist, setPlaylist] = useState([]);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [currentTrackId, setCurrentTrackId] = useState(null); // Track ID to uniquely identify the current track
   const [repeatMode, setRepeatMode] = useState("none");
   const timePercentage = (currentTime / duration) * 100;
   const volumePercentage = volume * 100;
@@ -31,7 +32,40 @@ export default function Player() {
     return () => clearInterval(interval);
   }, [text.length]);
 
-  // 更新當前播放時間
+  useEffect(() => {
+    const fetchPlaylistAndCurrentTrack = async () => {
+      try {
+        const playlistRes = await fetch("http://localhost:3001/playlist");
+        const currentTrackRes = await fetch(
+          "http://localhost:3001/currentTrack"
+        );
+        const playlistData = await playlistRes.json();
+        const currentTrackData = await currentTrackRes.json();
+
+        setPlaylist(playlistData);
+
+        // Update current track if server's data differs
+        if (
+          currentTrackData.id !== currentTrackId ||
+          currentTrackData.playing !== playing
+        ) {
+          setCurrentTrackId(currentTrackData.id);
+          setPlaying(currentTrackData.playing);
+          const track = playlistData.find((t) => t.id === currentTrackData.id);
+          if (track) {
+            setAudioSrc(track.url);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching playlist or current track:", error);
+      }
+    };
+
+    fetchPlaylistAndCurrentTrack();
+    const intervalId = setInterval(fetchPlaylistAndCurrentTrack, 5000);
+    return () => clearInterval(intervalId);
+  }, [currentTrackId, playing]);
+
   const handleProgress = () => {
     if (playerRef.current) {
       const time = playerRef.current.getCurrentTime();
@@ -41,68 +75,83 @@ export default function Player() {
     }
   };
 
-  // 播放下一首歌曲
-  const playNextTrack = () => {
-    if (repeatMode === "single") {
-      playerRef.current.seekTo(0); // 單曲循環，重頭播放
-      return;
+  const updateCurrentTrack = async (trackId, playStatus) => {
+    try {
+      await fetch("http://localhost:3001/currentTrack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentTrack: { id: trackId, playing: playStatus },
+        }),
+      });
+    } catch (error) {
+      console.error("Error updating current track:", error);
     }
+  };
 
-    let nextIndex;
+  const playNextTrack = async () => {
+    let nextTrack;
     if (repeatMode === "playlist") {
-      nextIndex = (currentTrackIndex + 1) % playlist.length; // 環繞播放
+      const currentIndex = playlist.findIndex(
+        (track) => track.id === currentTrackId
+      );
+      nextTrack = playlist[(currentIndex + 1) % playlist.length];
     } else {
-      nextIndex =
-        currentTrackIndex + 1 < playlist.length
-          ? currentTrackIndex + 1
-          : currentTrackIndex; // 到達末尾不再增加
+      const currentIndex = playlist.findIndex(
+        (track) => track.id === currentTrackId
+      );
+      nextTrack = playlist[currentIndex + 1] || playlist[0];
     }
 
-    if (nextIndex < playlist.length) {
-      setCurrentTrackIndex(nextIndex);
-      setAudioSrc(playlist[nextIndex]);
+    if (nextTrack) {
+      handleRemoveTrack({ stopPropagation: () => {} }, currentTrackId);
+      setAudioSrc(nextTrack.url);
       setPlaying(true);
+      setCurrentTrackId(nextTrack.id);
+      updateCurrentTrack(nextTrack.id, true);
     } else {
-      setPlaying(false); // 如果沒有下一首，則停止播放
+      setPlaying(false);
+      updateCurrentTrack(currentTrackId, false);
     }
   };
 
-  // 播放上一首歌曲
   const playPreviousTrack = () => {
-    let prevIndex =
-      currentTrackIndex - 1 >= 0 ? currentTrackIndex - 1 : currentTrackIndex;
-    if (prevIndex !== currentTrackIndex) {
-      setCurrentTrackIndex(prevIndex);
-      setAudioSrc(playlist[prevIndex]);
+    const currentIndex = playlist.findIndex(
+      (track) => track.id === currentTrackId
+    );
+    const prevTrack =
+      playlist[currentIndex - 1] || playlist[playlist.length - 1];
+    if (prevTrack) {
+      setAudioSrc(prevTrack.url);
       setPlaying(true);
+      setCurrentTrackId(prevTrack.id);
+      updateCurrentTrack(prevTrack.id, true);
     }
   };
 
-  // 隨機播放
   const playRandomTrack = () => {
     if (playlist.length > 0) {
-      let randomIndex;
+      let randomTrack;
       do {
-        randomIndex = Math.floor(Math.random() * playlist.length);
-      } while (randomIndex === currentTrackIndex);
+        randomTrack = playlist[Math.floor(Math.random() * playlist.length)];
+      } while (randomTrack.id === currentTrackId);
 
-      setCurrentTrackIndex(randomIndex);
-      setAudioSrc(playlist[randomIndex]);
+      setAudioSrc(randomTrack.url);
       setPlaying(true);
+      setCurrentTrackId(randomTrack.id);
+      updateCurrentTrack(randomTrack.id, true);
     }
   };
 
-  // 切換播放狀態
   const togglePlayPause = () => {
     setPlaying((prev) => !prev);
+    updateCurrentTrack(currentTrackId, !playing);
   };
 
-  // 處理連結輸入變化
   const handleLinkChange = (event) => {
     setInputValue(event.target.value);
   };
 
-  // 處理連結提交
   const handleLinkSubmit = async () => {
     if (!ReactPlayer.canPlay(inputValue)) {
       alert(`無法播放此連結\n${inputValue}`);
@@ -111,86 +160,57 @@ export default function Player() {
     }
 
     if (inputValue) {
-      fetchVideoTitle(inputValue);
+      const newTrack = { id: uuidv4(), url: inputValue }; // Assign UUID to each new track
+      const newPlaylist = [...playlist, newTrack];
+      setPlaylist(newPlaylist);
 
-      setPlaylist([...playlist, inputValue]);
+      await fetch("http://localhost:3001/playlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlist: newPlaylist }),
+      });
+
       if (playlist.length === 0) {
-        // 如果是第一首歌，立即開始播放
-        setAudioSrc(inputValue);
+        setAudioSrc(newTrack.url);
         setPlaying(true);
-        setCurrentTrackIndex(0);
+        setCurrentTrackId(newTrack.id);
+        updateCurrentTrack(newTrack.id, true);
       }
       setInputValue("");
     }
   };
 
-  const fetchVideoTitle = async (url) => {
-    try {
-      const response = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL
-        }/api/videoTitle?url=${encodeURIComponent(url)}`
-      );
-      const data = await response.json();
+  const handleRemoveTrack = async (event, trackId) => {
+    event.stopPropagation();
 
-      if (response.ok) {
-        if (data.playlist) {
-          setVideoTitles((prev) => [
-            ...prev,
-            {
-              title: `播放清單 ${data.songCount} 首歌曲 ${data.title}`,
-              url,
-              thumbnail: data.thumbnail,
-            },
-          ]);
-        } else {
-          setVideoTitles((prev) => [
-            ...prev,
-            { title: data.title, url, thumbnail: data.thumbnail },
-          ]);
-        }
-      }
-    } catch (error) {
-      console.error("Network error:", error);
+    const updatedPlaylist = playlist.filter((track) => track.id !== trackId);
+    setPlaylist(updatedPlaylist);
+
+    if (trackId === currentTrackId) {
+      const newCurrentTrack = updatedPlaylist[0] || {};
+      setAudioSrc(newCurrentTrack.url || "");
+      setCurrentTrackId(newCurrentTrack.id || null);
+      updateCurrentTrack(newCurrentTrack.id || null, false);
     }
+
+    await fetch("http://localhost:3001/playlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlist: updatedPlaylist }),
+    });
   };
-  // 格式化時間為分鐘:秒數
+
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  // 選擇曲目並播放
-  const selectTrack = (index) => {
-    console.log(videoTitles[index]);
-    setCurrentTrackIndex(index);
-    setAudioSrc(playlist[index]);
-    setPlaying(true);
-  };
-
-  const handleRemoveTrack = (event, index) => {
-    event.stopPropagation();
-    const updatedPlaylist = playlist.filter((_, i) => i !== index);
-    setPlaylist(updatedPlaylist);
-
-    // 更新当前曲目索引
-    if (index === currentTrackIndex) {
-      if (index === playlist.length - 1) {
-        setCurrentTrackIndex(index - 1);
-      } else {
-        setCurrentTrackIndex(index + 1);
-      }
-      setAudioSrc(updatedPlaylist[index + 1]);
-    } else if (index < currentTrackIndex) {
-      setCurrentTrackIndex(currentTrackIndex - 1);
-    }
-  };
-
   return (
     <div>
       <Head>
         <title>Yeci Playground</title>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
       </Head>
 
       <div className={styles.contentContainer}>
@@ -229,53 +249,57 @@ export default function Player() {
               <div
                 style={{ display: "flex", flexDirection: "row", gap: "30px" }}
               >
-                <h2>播放列表 - {playlist.length} 首歌曲</h2>
-                <button
+                <h2>共用播放列表 - {playlist.length} 首歌曲</h2>
+                {/* <button
                   className={styles.button}
                   style={{ maxWidth: "20vw", width: "100px" }}
                   onClick={() => setPlaylist([])}
                 >
                   清空歌單
-                </button>
+                </button> */}
               </div>
 
               <ul>
-                {playlist.map((track, index) => (
+                {playlist.map((track) => (
                   <li
-                    key={index}
-                    onClick={() => selectTrack(index)}
+                    key={track.id}
+                    // onClick={() => selectTrack(index)}
                     className={`${styles.trackElement} ${
-                      index === currentTrackIndex
+                      track.id === currentTrackId
                         ? styles.active
                         : styles.inactive
                     }`}
                     style={{
-                      color: index === currentTrackIndex ? "#86AB89" : "grey",
+                      color: track.id === currentTrackId ? "#86AB89" : "grey",
                     }}
                   >
                     <>
-                      {videoTitles[index] && videoTitles[index].thumbnail && (
-                        <img
-                          src={videoTitles[index].thumbnail}
-                          alt={videoTitles[index].title}
-                          className={styles.thumbnail}
-                        />
+                      {videoTitles[track.id] &&
+                        videoTitles[track.id].thumbnail && (
+                          <img
+                            src={videoTitles[track.id].thumbnail}
+                            alt={videoTitles[track.id].title}
+                            className={styles.thumbnail}
+                          />
+                        )}
+                      {track.id === currentTrackId && (
+                        <button className={styles.removeButton}>💎</button>
                       )}
-                      {index === currentTrackIndex ? (
+                      {/* {track.id === currentTrackId ? (
                         <button className={styles.removeButton}>💎</button>
                       ) : (
                         <button
                           className={styles.removeButton}
-                          onClick={(event) => handleRemoveTrack(event, index)}
+                          onClick={(event) => handleRemoveTrack(event, track.id)}
                         >
                           ❌
                         </button>
-                      )}
+                      )} */}
                     </>
-                    {videoTitles[index]
-                      ? videoTitles[index].title.length > 50
-                        ? videoTitles[index].title.slice(0, 50) + "..."
-                        : videoTitles[index].title
+                    {videoTitles[track.id]
+                      ? videoTitles[track.id].title.length > 50
+                        ? videoTitles[track.id].title.slice(0, 50) + "..."
+                        : videoTitles[track.id].title
                       : "未知歌曲"}
                   </li>
                 ))}
@@ -283,7 +307,7 @@ export default function Player() {
             </div>
           )}
 
-          {audioSrc && (
+          {playing && audioSrc && (
             <div className={styles.playerContainer}>
               <>
                 <ReactPlayer
@@ -296,6 +320,7 @@ export default function Player() {
                   height="100%"
                   onProgress={handleProgress}
                   onEnded={playNextTrack} // 播放結束後自動播放下一首
+                  progressInterval={500} // 每 500 毫秒更新進度
                 />
 
                 <div className={styles.trackInfo}>
@@ -309,11 +334,10 @@ export default function Player() {
                     </span>
                   ))}
                   {" - "}
-                  {videoTitles[currentTrackIndex]
-                    ? videoTitles[currentTrackIndex].title.length > 50
-                      ? videoTitles[currentTrackIndex].title.slice(0, 50) +
-                        "..."
-                      : videoTitles[currentTrackIndex].title
+                  {videoTitles[currentTrackId]
+                    ? videoTitles[currentTrackId].title.length > 50
+                      ? videoTitles[currentTrackId].title.slice(0, 50) + "..."
+                      : videoTitles[currentTrackId].title
                     : "未知歌曲"}
                 </div>
 
@@ -327,6 +351,7 @@ export default function Player() {
                     onChange={(e) =>
                       playerRef.current.seekTo(parseFloat(e.target.value))
                     }
+                    disabled={true}
                     style={{ "--value": `${timePercentage}%` }}
                   />
                   <div className={styles.timeDisplay}>
@@ -335,7 +360,7 @@ export default function Player() {
                   </div>
                 </div>
 
-                <div className={styles.controlPanel}>
+                {/* <div className={styles.controlPanel}>
                   <button className={styles.button} onClick={playRandomTrack}>
                     隨機順序
                   </button>
@@ -365,7 +390,7 @@ export default function Player() {
                     {repeatMode === "single" && <span>單曲循環</span>}
                     {repeatMode === "playlist" && <span>歌單循環</span>}
                   </button>
-                </div>
+                </div> */}
 
                 <div className={styles.volumeControl}>
                   <p>音量：{Math.round(volume * 100)}%</p>
