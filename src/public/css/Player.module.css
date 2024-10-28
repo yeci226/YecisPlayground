@@ -72,6 +72,8 @@
   user-select: none;
   outline: 2px solid #86ab89;
   font-family: "YinPing", sans-serif;
+  margin-top: 15px;
+  max-height: 40px;
 }
 
 .playerContainer {

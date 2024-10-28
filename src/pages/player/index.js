@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import styles from "../../public/css/Player.module.css";
 import fetch from "node-fetch";
+import dotenv from "dotenv";
+dotenv.config();
 
 export default function Home() {
   const text = "Hello world!";
@@ -123,8 +125,11 @@ export default function Home() {
 
   const fetchVideoTitle = async (url) => {
     try {
+      console.log(process.env);
       const response = await fetch(
-        `http://localhost:5000/api/videoTitle?url=${encodeURIComponent(url)}`
+        `${
+          process.env.NEXT_PUBLIC_API_URL
+        }/api/videoTitle?url=${encodeURIComponent(url)}`
       );
       const data = await response.json();
       if (response.ok) {

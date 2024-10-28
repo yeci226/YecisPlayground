@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "add": "^2.0.6",
+    "dotenv": "^16.4.5",
     "next": "14.2.13",
     "node-fetch": "2.6.1",
     "react": "^18",
