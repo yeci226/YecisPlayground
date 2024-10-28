@@ -41,6 +41,10 @@
     font-family: "YinPing", sans-serif;
 }
 
+.audioControls input.active {
+    outline: 2px solid #86AB89; 
+}
+
 .audioControls input:focus {
     outline: 2px solid #86AB89; 
 }
@@ -61,7 +65,7 @@
     background: none;
     font-size: 1.05rem;
     border-radius: 10px;
-    color: white;
+    color: var(--fallback-bc);
     border: none;
     padding: 10px 15px 10px 15px;
     cursor: pointer;
@@ -116,7 +120,37 @@
     flex-direction: column;
     align-items: center;
     margin-top: 30px;
-  }
+}
+
+.progressBar {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 5px;
+}
+
+.progressBar::-webkit-slider-thumb {
+    margin-top: -5px;
+    -webkit-appearance: none; 
+    appearance: none;
+    width: 16px; 
+    height: 16px; 
+    background: #76c7c0; 
+    border-radius: 50%; 
+    cursor: pointer;
+}
+
+.progressBar::-webkit-slider-runnable-track {
+    height: 5px;
+    border-radius: 5px; 
+    background: linear-gradient(to right, #76c7c0 0%, #76c7c0 var(--value), #e0e0e0 var(--value), #e0e0e0 100%); /* 使用渐变来表示已滑过部分 */
+}
+
+@keyframes move {
+    from { background-position: -200%; }
+    to { background-position: 200%; }
+}
   
 .timeDisplay {
     display: flex;
@@ -162,6 +196,22 @@
  .playlistContainer li:hover {
     text-decoration: underline;
  }
+
+ .trackElement {
+    margin-top: 5px;
+    padding: 12px 12px;
+    border-radius: 15px;
+    background-color: rgb(42, 46, 50);
+    cursor: pointer;
+}
+
+.trackElement.active {
+    outline: 2px solid #86AB89;
+}
+
+.trackElement.inactive {
+    outline: 2px solid var(--bc);
+}
   
 .jump {
     display: inline-block;

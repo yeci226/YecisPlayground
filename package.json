@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@gonetone/get-youtube-id-by-url": "^2.0.0",
     "add": "^2.0.6",
     "next": "14.2.13",
+    "node-fetch": "2.6.1",
     "react": "^18",
     "react-dom": "^18",
     "react-player": "^2.16.0",

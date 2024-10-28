@@ -2,12 +2,15 @@ import Head from "next/head";
 import { useEffect, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import styles from "../../public/css/Player.module.css";
+import { videoId } from "@gonetone/get-youtube-id-by-url";
+import fetch from "node-fetch";
 
 export default function Home() {
   const text = "Hello world!";
   const [animate, setAnimate] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [audioSrc, setAudioSrc] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
   const [playing, setPlaying] = useState(false);
   const playerRef = useRef(null);
   const [duration, setDuration] = useState(0);
@@ -16,6 +19,8 @@ export default function Home() {
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [repeatMode, setRepeatMode] = useState("none");
+  const timePercentage = (currentTime / duration) * 100;
+  const volumePercentage = volume * 100;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -105,6 +110,7 @@ export default function Home() {
     }
 
     if (inputValue) {
+      fetchVideoTitle();
       setPlaylist([...playlist, inputValue]);
       if (playlist.length === 0) {
         // 如果是第一首歌，立即開始播放
@@ -113,6 +119,23 @@ export default function Home() {
         setCurrentTrackIndex(0);
       }
       setInputValue("");
+    }
+  };
+
+  const fetchVideoTitle = async () => {
+    console.log(inputValue);
+    const video_id = await videoId(inputValue);
+    console.log(video_id);
+    if (video_id) {
+      const response = await fetch(
+        `https://www.youtube.com/watch?v=${video_id}`
+      );
+      const text = await response.text();
+      const titleMatch = text.match(/<title>(.*?)<\/title>/);
+      if (titleMatch && titleMatch[1]) {
+        console.log(titleMatch[1].replace(" - YouTube", "").trim());
+        setVideoTitle(titleMatch[1].replace(" - YouTube", "").trim());
+      }
     }
   };
 
@@ -130,6 +153,24 @@ export default function Home() {
     setPlaying(true);
   };
 
+  const handleRemoveTrack = (event, index) => {
+    event.stopPropagation();
+    const updatedPlaylist = playlist.filter((_, i) => i !== index);
+    setPlaylist(updatedPlaylist);
+
+    // 更新当前曲目索引
+    if (index === currentTrackIndex) {
+      if (index === playlist.length - 1) {
+        setCurrentTrackIndex(index - 1);
+      } else {
+        setCurrentTrackIndex(index + 1);
+      }
+      setAudioSrc(updatedPlaylist[index + 1]);
+    } else if (index < currentTrackIndex) {
+      setCurrentTrackIndex(currentTrackIndex - 1);
+    }
+  };
+
   return (
     <div>
       <Head>
@@ -141,7 +182,7 @@ export default function Home() {
           {text.split("").map((char, index) => (
             <span
               key={index}
-              className={`${styles.jump} ${animate ? styles.animate : ""}`}
+              className={`${styles.jump} ${animate && styles.animate}`}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               {char === " " ? "\u00A0" : char}
@@ -156,6 +197,7 @@ export default function Home() {
             style={{ width: "60vw", maxWidth: "400px" }}
             value={inputValue}
             onChange={handleLinkChange}
+            className={inputValue && styles.active}
           />
           <button className={styles.button} onClick={handleLinkSubmit}>
             添加到歌單
@@ -186,32 +228,29 @@ export default function Home() {
                   <li
                     key={index}
                     onClick={() => selectTrack(index)}
+                    className={`${styles.trackElement} ${
+                      index === currentTrackIndex
+                        ? styles.active
+                        : styles.inactive
+                    }`}
                     style={{
-                      cursor: "pointer",
                       color:
                         index === currentTrackIndex ? "#86AB89" : "#0F0F0F",
                     }}
                   >
-                    {track} {index === currentTrackIndex && "🎵"}{" "}
-                    {index != currentTrackIndex && (
-                      <button
-                        className={styles.removeButton}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setPlaylist(playlist.filter((_, i) => i !== index));
-                          if (index === currentTrackIndex) {
-                            if (index === playlist.length - 1) {
-                              setCurrentTrackIndex(index - 1);
-                            }
-                            setAudioSrc(playlist[index + 1]);
-                          } else if (index < currentTrackIndex) {
-                            setCurrentTrackIndex(currentTrackIndex - 1);
-                          }
-                        }}
-                      >
-                        ❌
-                      </button>
-                    )}
+                    <>
+                      {index === currentTrackIndex ? (
+                        <button className={styles.removeButton}>💎</button>
+                      ) : (
+                        <button
+                          className={styles.removeButton}
+                          onClick={(event) => handleRemoveTrack(event, index)}
+                        >
+                          ❌
+                        </button>
+                      )}
+                    </>
+                    {track.length > 50 && track.slice(0, 50) + "..."}
                   </li>
                 ))}
               </ul>
@@ -237,9 +276,7 @@ export default function Home() {
                   {"正在播放".split("").map((char, index) => (
                     <span
                       key={index}
-                      className={`${styles.jump} ${
-                        animate ? styles.animate : ""
-                      }`}
+                      className={`${styles.jump} ${animate && styles.animate}`}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       {char === " " ? "\u00A0" : char}
@@ -249,6 +286,7 @@ export default function Home() {
 
                 <div className={styles.progressContainer}>
                   <input
+                    className={styles.progressBar}
                     type="range"
                     min={0}
                     max={duration || 0}
@@ -256,7 +294,7 @@ export default function Home() {
                     onChange={(e) =>
                       playerRef.current.seekTo(parseFloat(e.target.value))
                     }
-                    style={{ width: "100%" }}
+                    style={{ "--value": `${timePercentage}%` }}
                   />
                   <div className={styles.timeDisplay}>
                     <span>{formatTime(currentTime)}</span>
@@ -299,13 +337,14 @@ export default function Home() {
                 <div className={styles.volumeControl}>
                   <p>音量：{Math.round(volume * 100)}%</p>
                   <input
+                    className={styles.progressBar}
                     type="range"
                     min="0"
                     max="1"
                     step="0.01"
                     value={volume}
                     onChange={(e) => setVolume(parseFloat(e.target.value))}
-                    style={{ width: "25%" }}
+                    style={{ width: "25%", "--value": `${volumePercentage}%` }}
                   />
                 </div>
               </>
