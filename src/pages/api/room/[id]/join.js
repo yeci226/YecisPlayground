@@ -6,14 +6,16 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     const { userId } = req.body;
 
-    // 获取当前房间数据
+    // Get current room data
     const roomData = await redis.get(`room:${id}`);
 
     if (roomData) {
-      const room = JSON.parse(roomData);
+      const room = roomData;
+
       if (!room.users.includes(userId)) {
         room.users.push(userId);
-        // 更新房间数据到 Redis
+
+        // Update room data in Upstash KV
         await redis.set(`room:${id}`, JSON.stringify(room));
         return res
           .status(200)

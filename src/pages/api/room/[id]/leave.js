@@ -6,18 +6,20 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     const { userId } = req.body;
 
-    // 获取当前房间数据
+    // Get current room data
     const roomData = await redis.get(`room:${id}`);
 
     if (roomData) {
-      const room = JSON.parse(roomData);
+      const room = roomData;
+
+      // Remove user from the list
       room.users = room.users.filter((user) => user !== userId);
 
-      // 更新房间数据到 Redis
+      // Update the Redis store with the modified users list
       await redis.set(`room:${id}`, JSON.stringify(room));
 
       if (room.users.length === 0) {
-        await redis.del(`room:${id}`); // 删除房间
+        await redis.del(`room:${id}`); // Delete the room if no users left
         return res.status(200).json({ status: "Room deleted" });
       } else {
         return res
