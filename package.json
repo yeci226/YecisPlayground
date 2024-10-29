@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"node src/server.js\" \"next dev\"",
+    "dev": "next dev",
     "build": "next build",
-    "start": "concurrently \"node src/server.js\" \"next start\"",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -13,11 +13,13 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "ioredis": "^5.4.1",
     "next": "14.2.13",
     "node-fetch": "2.6.1",
     "react": "^18",
     "react-dom": "^18",
     "react-player": "^2.16.0",
+    "redis": "^4.7.0",
     "uuid": "^11.0.1",
     "yarn": "^1.22.22",
     "ytdl-core": "^4.11.5"

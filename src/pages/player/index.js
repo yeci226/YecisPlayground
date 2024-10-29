@@ -40,7 +40,7 @@ export default function Player() {
   useEffect(() => {
     if (id) {
       const fetchRoomData = async () => {
-        const response = await fetch(`http://localhost:3001/room/${id}`);
+        const response = await fetch(`/api/room/${id}`);
         const data = await response.json();
         setPlaylist(data.playlist);
         if (data.currentTrack.id) {
@@ -63,7 +63,7 @@ export default function Player() {
     localStorage.setItem("userId", userId);
 
     const joinRoom = async () => {
-      await fetch(`http://localhost:3001/room/${id}/join`, {
+      await fetch(`/api/room/${id}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -74,7 +74,7 @@ export default function Player() {
 
     return () => {
       const leaveRoom = async () => {
-        await fetch(`http://localhost:3001/room/${id}/leave`, {
+        await fetch(`/api/room/${id}/leave`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId }),
@@ -88,7 +88,7 @@ export default function Player() {
     if (!id) return;
     const fetchPlaylistAndCurrentTrack = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/room/${id}`);
+        const response = await fetch(`/api/room/${id}`);
         const { playlist, currentTrack } = await response.json();
 
         setPlaylist(playlist);
@@ -115,9 +115,9 @@ export default function Player() {
   }, [currentTrackId, playing]);
 
   const updateUserCount = async () => {
-    const response = await fetch(`http://localhost:3001/room/${id}`);
+    const response = await fetch(`/api/room/${id}`);
     const data = await response.json();
-    setUserCount(data.user.length);
+    setUserCount(data.users.length);
   };
 
   useEffect(() => {
@@ -151,7 +151,7 @@ export default function Player() {
   };
 
   const updateCurrentTrack = async (trackId, playStatus) => {
-    await fetch(`http://localhost:3001/room/${router.query.id}/currentTrack`, {
+    await fetch(`/api/room/${router.query.id}/currentTrack`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -230,13 +230,13 @@ export default function Player() {
     }
 
     if (id) {
-      const roomResponse = await fetch(`http://localhost:3001/room/${id}`);
+      const roomResponse = await fetch(`/api/room/${id}`);
       if (roomResponse.ok) {
         const newTrack = { id: uuidv4(), url: inputValue };
         const newPlaylist = [...playlist, newTrack];
         setPlaylist(newPlaylist);
 
-        await fetch(`http://localhost:3001/room/${id}/playlist`, {
+        await fetch(`/api/room/${id}/playlist`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ playlist: newPlaylist }),
@@ -249,7 +249,7 @@ export default function Player() {
           updateCurrentTrack(newTrack.id, true);
         }
       } else {
-        const response = await fetch("http://localhost:3001/createRoom", {
+        const response = await fetch("/api/createRoom", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
@@ -257,9 +257,10 @@ export default function Player() {
         router.replace(`/player?id=${data.roomId}`);
       }
     } else {
-      const response = await fetch("http://localhost:3001/createRoom", {
+      const response = await fetch("/api/createRoom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}), // 如果 API 需要主體，可以傳遞一個空對象
       });
       const data = await response.json();
       router.replace(`/player?id=${data.roomId}`);
@@ -281,7 +282,7 @@ export default function Player() {
       updateCurrentTrack(newCurrentTrack.id || null, false);
     }
 
-    await fetch(`http://localhost:3001/room/${id}/playlist`, {
+    await fetch(`/api/room/${id}/playlist`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playlist: updatedPlaylist }),
