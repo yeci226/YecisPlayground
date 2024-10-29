@@ -3,12 +3,14 @@ import { useEffect, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import styles from "../../public/css/Player.module.css";
 import { v4 as uuidv4 } from "uuid";
+import { useRouter } from "next/router";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
 
 export default function Player() {
-  const text = "Let's play some music";
+  const router = useRouter();
+  const { id } = router.query;
   const [animate, setAnimate] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [audioSrc, setAudioSrc] = useState("");
@@ -19,10 +21,13 @@ export default function Player() {
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.1);
   const [playlist, setPlaylist] = useState([]);
-  const [currentTrackId, setCurrentTrackId] = useState(null); // Track ID to uniquely identify the current track
+  const [currentTrackId, setCurrentTrackId] = useState(null);
   const [repeatMode, setRepeatMode] = useState("none");
+  const [userCount, setUserCount] = useState(0);
   const timePercentage = (currentTime / duration) * 100;
   const volumePercentage = volume * 100;
+  const text =
+    userCount > 1 ? `在線人數 ${userCount} 人` : "Let's play some music";
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,25 +38,68 @@ export default function Player() {
   }, [text.length]);
 
   useEffect(() => {
+    if (id) {
+      const fetchRoomData = async () => {
+        const response = await fetch(`http://localhost:3001/room/${id}`);
+        const data = await response.json();
+        setPlaylist(data.playlist);
+        if (data.currentTrack.id) {
+          setCurrentTrackId(data.currentTrack.id);
+          setAudioSrc(
+            data.playlist.find((track) => track.id === data.currentTrack.id)
+              ?.url
+          );
+          setPlaying(data.currentTrack.playing);
+        }
+        setRepeatMode(data.repeatMode);
+      };
+      fetchRoomData();
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const userId = localStorage.getItem("userId") || uuidv4();
+    localStorage.setItem("userId", userId);
+
+    const joinRoom = async () => {
+      await fetch(`http://localhost:3001/room/${id}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+    };
+
+    joinRoom();
+
+    return () => {
+      const leaveRoom = async () => {
+        await fetch(`http://localhost:3001/room/${id}/leave`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+      };
+      leaveRoom();
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
     const fetchPlaylistAndCurrentTrack = async () => {
       try {
-        const playlistRes = await fetch("http://localhost:3001/playlist");
-        const currentTrackRes = await fetch(
-          "http://localhost:3001/currentTrack"
-        );
-        const playlistData = await playlistRes.json();
-        const currentTrackData = await currentTrackRes.json();
+        const response = await fetch(`http://localhost:3001/room/${id}`);
+        const { playlist, currentTrack } = await response.json();
 
-        setPlaylist(playlistData);
+        setPlaylist(playlist);
 
-        // Update current track if server's data differs
         if (
-          currentTrackData.id !== currentTrackId ||
-          currentTrackData.playing !== playing
+          currentTrack.id !== currentTrackId ||
+          currentTrack.playing !== playing
         ) {
-          setCurrentTrackId(currentTrackData.id);
-          setPlaying(currentTrackData.playing);
-          const track = playlistData.find((t) => t.id === currentTrackData.id);
+          setCurrentTrackId(currentTrack.id);
+          setPlaying(currentTrack.playing);
+          const track = playlist.find((t) => t.id === currentTrack.id);
           if (track) {
             setAudioSrc(track.url);
           }
@@ -62,9 +110,36 @@ export default function Player() {
     };
 
     fetchPlaylistAndCurrentTrack();
-    const intervalId = setInterval(fetchPlaylistAndCurrentTrack, 5000);
+    const intervalId = setInterval(fetchPlaylistAndCurrentTrack, 3000);
     return () => clearInterval(intervalId);
   }, [currentTrackId, playing]);
+
+  const updateUserCount = async () => {
+    const response = await fetch(`http://localhost:3001/room/${id}`);
+    const data = await response.json();
+    setUserCount(data.user.length);
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    const interval = setInterval(updateUserCount, 5000);
+    return () => clearInterval(interval);
+  }, [id]);
+
+  const selectTrack = (index) => {
+    if (index < 0 || index >= playlist.length) {
+      console.error("Invalid track index:", index);
+      return;
+    }
+
+    const track = playlist[index];
+    if (track) {
+      setAudioSrc(track.url);
+      setPlaying(true);
+      setCurrentTrackId(track.id);
+      updateCurrentTrack(track.id, true);
+    }
+  };
 
   const handleProgress = () => {
     if (playerRef.current) {
@@ -76,35 +151,29 @@ export default function Player() {
   };
 
   const updateCurrentTrack = async (trackId, playStatus) => {
-    try {
-      await fetch("http://localhost:3001/currentTrack", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentTrack: { id: trackId, playing: playStatus },
-        }),
-      });
-    } catch (error) {
-      console.error("Error updating current track:", error);
-    }
+    await fetch(`http://localhost:3001/room/${router.query.id}/currentTrack`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currentTrack: { id: trackId, playing: playStatus },
+        repeatMode,
+      }),
+    });
   };
 
   const playNextTrack = async () => {
     let nextTrack;
+    const currentIndex = playlist.findIndex(
+      (track) => track.id === currentTrackId
+    );
+
     if (repeatMode === "playlist") {
-      const currentIndex = playlist.findIndex(
-        (track) => track.id === currentTrackId
-      );
       nextTrack = playlist[(currentIndex + 1) % playlist.length];
     } else {
-      const currentIndex = playlist.findIndex(
-        (track) => track.id === currentTrackId
-      );
       nextTrack = playlist[currentIndex + 1] || playlist[0];
     }
 
     if (nextTrack) {
-      handleRemoveTrack({ stopPropagation: () => {} }, currentTrackId);
       setAudioSrc(nextTrack.url);
       setPlaying(true);
       setCurrentTrackId(nextTrack.id);
@@ -121,6 +190,7 @@ export default function Player() {
     );
     const prevTrack =
       playlist[currentIndex - 1] || playlist[playlist.length - 1];
+
     if (prevTrack) {
       setAudioSrc(prevTrack.url);
       setPlaying(true);
@@ -159,25 +229,43 @@ export default function Player() {
       return;
     }
 
-    if (inputValue) {
-      const newTrack = { id: uuidv4(), url: inputValue }; // Assign UUID to each new track
-      const newPlaylist = [...playlist, newTrack];
-      setPlaylist(newPlaylist);
+    if (id) {
+      const roomResponse = await fetch(`http://localhost:3001/room/${id}`);
+      if (roomResponse.ok) {
+        const newTrack = { id: uuidv4(), url: inputValue };
+        const newPlaylist = [...playlist, newTrack];
+        setPlaylist(newPlaylist);
 
-      await fetch("http://localhost:3001/playlist", {
+        await fetch(`http://localhost:3001/room/${id}/playlist`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playlist: newPlaylist }),
+        });
+
+        if (playlist.length === 0) {
+          setAudioSrc(newTrack.url);
+          setPlaying(true);
+          setCurrentTrackId(newTrack.id);
+          updateCurrentTrack(newTrack.id, true);
+        }
+      } else {
+        const response = await fetch("http://localhost:3001/createRoom", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await response.json();
+        router.replace(`/player?id=${data.roomId}`);
+      }
+    } else {
+      const response = await fetch("http://localhost:3001/createRoom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playlist: newPlaylist }),
       });
-
-      if (playlist.length === 0) {
-        setAudioSrc(newTrack.url);
-        setPlaying(true);
-        setCurrentTrackId(newTrack.id);
-        updateCurrentTrack(newTrack.id, true);
-      }
-      setInputValue("");
+      const data = await response.json();
+      router.replace(`/player?id=${data.roomId}`);
     }
+
+    setInputValue("");
   };
 
   const handleRemoveTrack = async (event, trackId) => {
@@ -193,7 +281,7 @@ export default function Player() {
       updateCurrentTrack(newCurrentTrack.id || null, false);
     }
 
-    await fetch("http://localhost:3001/playlist", {
+    await fetch(`http://localhost:3001/room/${id}/playlist`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playlist: updatedPlaylist }),
@@ -214,11 +302,11 @@ export default function Player() {
       </Head>
 
       <div className={styles.contentContainer}>
-        <h1 className={!audioSrc && styles.contentLower}>
+        <h1 className={!audioSrc ? styles.contentLower : ""}>
           {text.split("").map((char, index) => (
             <span
               key={index}
-              className={`${styles.jump} ${animate && styles.animate}`}
+              className={`${styles.jump} ${animate ? styles.animate : ""}`}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               {char === " " ? "\u00A0" : char}
@@ -233,7 +321,7 @@ export default function Player() {
             style={{ width: "60vw", maxWidth: "400px" }}
             value={inputValue}
             onChange={handleLinkChange}
-            className={inputValue && styles.active}
+            className={inputValue ? styles.active : ""}
           />
           <button className={styles.button} onClick={handleLinkSubmit}>
             添加到歌單
@@ -263,7 +351,7 @@ export default function Player() {
                 {playlist.map((track) => (
                   <li
                     key={track.id}
-                    // onClick={() => selectTrack(index)}
+                    onClick={() => selectTrack(playlist.indexOf(track))}
                     className={`${styles.trackElement} ${
                       track.id === currentTrackId
                         ? styles.active
@@ -271,6 +359,8 @@ export default function Player() {
                     }`}
                     style={{
                       color: track.id === currentTrackId ? "#86AB89" : "grey",
+                      cursor:
+                        track.id === currentTrackId ? "default" : "pointer",
                     }}
                   >
                     <>
@@ -282,19 +372,23 @@ export default function Player() {
                             className={styles.thumbnail}
                           />
                         )}
-                      {track.id === currentTrackId && (
-                        <button className={styles.removeButton}>💎</button>
-                      )}
-                      {/* {track.id === currentTrackId ? (
-                        <button className={styles.removeButton}>💎</button>
+                      {track.id === currentTrackId ? (
+                        <button
+                          className={styles.removeButton}
+                          style={{ cursor: "default" }}
+                        >
+                          💎
+                        </button>
                       ) : (
                         <button
                           className={styles.removeButton}
-                          onClick={(event) => handleRemoveTrack(event, track.id)}
+                          onClick={(event) =>
+                            handleRemoveTrack(event, track.id)
+                          }
                         >
                           ❌
                         </button>
-                      )} */}
+                      )}
                     </>
                     {videoTitles[track.id]
                       ? videoTitles[track.id].title.length > 50
@@ -307,7 +401,7 @@ export default function Player() {
             </div>
           )}
 
-          {playing && audioSrc && (
+          {audioSrc && (
             <div className={styles.playerContainer}>
               <>
                 <ReactPlayer
@@ -319,15 +413,17 @@ export default function Player() {
                   width="100%"
                   height="100%"
                   onProgress={handleProgress}
-                  onEnded={playNextTrack} // 播放結束後自動播放下一首
-                  progressInterval={500} // 每 500 毫秒更新進度
+                  onEnded={playNextTrack}
+                  progressInterval={500}
                 />
 
                 <div className={styles.trackInfo}>
                   {"正在播放".split("").map((char, index) => (
                     <span
                       key={index}
-                      className={`${styles.jump} ${animate && styles.animate}`}
+                      className={`${styles.jump} ${
+                        animate ? styles.animate : ""
+                      }`}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       {char === " " ? "\u00A0" : char}
@@ -360,17 +456,33 @@ export default function Player() {
                   </div>
                 </div>
 
-                {/* <div className={styles.controlPanel}>
-                  <button className={styles.button} onClick={playRandomTrack}>
-                    隨機順序
+                <div className={styles.controlPanel}>
+                  <button
+                    className={styles.button}
+                    onClick={playRandomTrack}
+                    title="隨機播放"
+                  >
+                    隨機播放
                   </button>
-                  <button className={styles.button} onClick={playPreviousTrack}>
+                  <button
+                    className={styles.button}
+                    onClick={playPreviousTrack}
+                    title="播放上一首"
+                  >
                     上一首
                   </button>
-                  <button className={styles.button} onClick={togglePlayPause}>
+                  <button
+                    className={styles.button}
+                    onClick={togglePlayPause}
+                    title={playing ? "暫停" : "播放"}
+                  >
                     {playing ? "暫停" : "播放"}
                   </button>
-                  <button className={styles.button} onClick={playNextTrack}>
+                  <button
+                    className={styles.button}
+                    onClick={playNextTrack}
+                    title="播放下一首"
+                  >
                     下一首
                   </button>
 
@@ -385,12 +497,15 @@ export default function Player() {
                           : "none"
                       )
                     }
+                    title="循環模式"
                   >
-                    {repeatMode === "none" && <span>關閉循環</span>}
+                    {(repeatMode === "none" || !repeatMode) && (
+                      <span>關閉循環</span>
+                    )}
                     {repeatMode === "single" && <span>單曲循環</span>}
                     {repeatMode === "playlist" && <span>歌單循環</span>}
                   </button>
-                </div> */}
+                </div>
 
                 <div className={styles.volumeControl}>
                   <p>音量：{Math.round(volume * 100)}%</p>

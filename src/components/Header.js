@@ -6,8 +6,8 @@ import styles from "../public/css/Header.module.css";
 const Header = () => {
   const router = useRouter();
   const currentPage = router.pathname;
-  const [dropdownOpen, setDropdownOpen] = useState(false); // 控制下拉選單的狀態
-  const dropdownRef = useRef(null); // 用於引用下拉選單
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const NavLink = ({ to, children }) => (
     <Link href={to} className={currentPage === to ? styles.active : ""}>
@@ -15,7 +15,6 @@ const Header = () => {
     </Link>
   );
 
-  // 監聽點擊事件以關閉下拉選單
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -23,21 +22,34 @@ const Header = () => {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    if (dropdownOpen) {
+      window.addEventListener("click", handleClickOutside);
+    } else {
+      window.removeEventListener("click", handleClickOutside);
+    }
+
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("click", handleClickOutside);
     };
-  }, []);
+  }, [dropdownOpen]);
 
   return (
     <header className={styles.header}>
       <NavLink to="/">首頁</NavLink>
       <NavLink to="/about">關於</NavLink>
       <div className={styles.dropdown} ref={dropdownRef}>
-        <button onClick={() => setDropdownOpen(!dropdownOpen)}>小工具</button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDropdownOpen(!dropdownOpen);
+          }}
+        >
+          小工具
+        </button>
+
         <div
           className={`${styles.dropdownContent} ${
-            dropdownOpen ? styles.show : ""
+            dropdownOpen ? styles.show : styles.hide
           }`}
         >
           <NavLink to="/util/hsr">崩壞：星穹鐵道</NavLink>

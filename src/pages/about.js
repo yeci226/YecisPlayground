@@ -1,26 +1,35 @@
 import React, { useEffect, useRef } from "react";
 import Head from "next/head";
 import styles from "../public/css/About.module.css";
+import profileImage from "../public/assets/profile.webp";
 
 export default function About() {
-  const typingRef = useRef(null);
+  const typingRefH1 = useRef(null);
+  const typingRefH2 = useRef(null);
 
   useEffect(() => {
-    const typingElement = typingRef.current;
-    const textLength = typingElement.textContent.length;
-    const typingSpeed = 0.1; // 每个字符的时间（秒）
-    const totalDuration = textLength * typingSpeed; // 动画总时间
+    const typeText = (element, text, delay, callback) => {
+      let index = 0;
 
-    // 动态添加打字动画
-    typingElement.style.animation = `typing ${totalDuration}s steps(${textLength}, end), blink-caret 0.75s step-end infinite`;
+      const typeCharacter = () => {
+        if (index < text.length) {
+          element.textContent += text[index];
+          index++;
+          setTimeout(typeCharacter, delay);
+        } else {
+          if (callback) callback();
+        }
+      };
 
-    // 动画结束后移除光标
-    const timer = setTimeout(() => {
-      typingElement.classList.add(styles.finished);
-    }, totalDuration * 1000);
+      typeCharacter();
+    };
 
-    // 清理定时器
-    return () => clearTimeout(timer);
+    const h1Text = "你好！我是 Yeci";
+    const h2Text = "一名大學生兼 JavaScript 開發者";
+
+    typeText(typingRefH1.current, h1Text, 100, () => {
+      typeText(typingRefH2.current, h2Text, 100);
+    });
   }, []);
 
   return (
@@ -31,9 +40,17 @@ export default function About() {
       </Head>
 
       <div className={styles.contentContainer}>
-        <span ref={typingRef} className={styles.typing}>
-          你好！我是 Yeci
-        </span>
+        <div className={styles.profileContainer}>
+          <div className={styles.profileText}>
+            <h1 ref={typingRefH1} className={styles.typing}></h1>
+            <h2 ref={typingRefH2} className={styles.typing}></h2>
+          </div>
+          <img
+            src={profileImage.src}
+            alt="Profile"
+            className={styles.profileImage}
+          />
+        </div>
       </div>
     </div>
   );
