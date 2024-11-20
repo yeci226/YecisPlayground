@@ -13,7 +13,6 @@ export default async function handler(req, res) {
 
     // Store room data in Upstash KV
     await redis.set(`room:${roomId}`, JSON.stringify(data));
-    console.log("Room created:", roomId);
     return res.status(200).json({ status: "Room created", roomId });
   } else {
     res.setHeader("Allow", ["POST"]);

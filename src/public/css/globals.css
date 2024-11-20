@@ -30,18 +30,24 @@
 
 html, body {
   height: 100%;
+  width: 100%;
   margin: 0;
+  background-color: var(--fallback-bg);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  -ms-background-size: cover;
+  -o-background-size: cover;
+  -moz-background-size: cover;
+  -webkit-background-size: cover;
 }
 
 body {
+  min-height: 100vh; 
+  background-color: var(--fallback-bg);
   overflow-y: auto;
   transition: background-color 0.5s ease, color 0.5s ease;
 }
-
-header {
-  background-color: red;
-}
-
 
 .themeSwitchContainer {
   position: fixed; 
@@ -73,10 +79,9 @@ header {
   cursor: pointer;
 }
 
-/* 媒體查詢示例 */
 @media (max-width: 600px) {
   .themeSwitchContainer {
-      flex-direction: column; /* 在小屏幕上垂直排列 */
-      width: 90%; /* 在小屏幕上設置更小的寬度 */
+      flex-direction: column; 
+      width: 90%; 
   }
 }
