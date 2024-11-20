@@ -17,7 +17,7 @@ export default function Hsr() {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(
-        `Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression (New-Object Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/HSR/main/getwarps.ps1\")"'`
+        `Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\\"https://raw.githubusercontent.com/yeci226/HSR/main/getwarps.ps1\\")"'`
       );
       setCopied(true);
       setTimeout(() => setCopied(false), 2000); // 2秒後重置
@@ -37,13 +37,16 @@ export default function Hsr() {
     setSelectedRecordsIndex(null);
 
     try {
-      const res = await fetch("/api/hsr/import-log", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ logUrl }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/hsr/warp-log`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ logUrl }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
@@ -151,9 +154,7 @@ export default function Hsr() {
                       {copied ? "已複製" : "複製"}
                     </button>
                     <code>
-                      Start-Process powershell -Verb runAs -ArgumentList
-                      '-NoExit -Command "Invoke-Expression (New-Object
-                      Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/HSR/main/getwarps.ps1\")"'
+                      {`Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\\"https://raw.githubusercontent.com/yeci226/HSR/main/getwarps.ps1\\")"'`}
                     </code>
                   </div>
                   <span className={styles.tipContent}>
