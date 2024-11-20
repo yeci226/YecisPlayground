@@ -37,7 +37,7 @@ export default function Hsr() {
     setSelectedRecordsIndex(null);
 
     try {
-      const res = await fetch(`http://36.50.249.18:6600/api/hsr/warp-log`, {
+      const res = await fetch(`https://36.50.249.18:6600/api/hsr/warp-log`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
