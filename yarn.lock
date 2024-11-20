@@ -572,6 +572,11 @@ loose-envify@^1.1.0, loose-envify@^1.4.0:
   dependencies:
     js-tokens "^3.0.0 || ^4.0.0"
 
+lucide-react@^0.460.0:
+  version "0.460.0"
+  resolved "https://registry.yarnpkg.com/lucide-react/-/lucide-react-0.460.0.tgz#5681364b6bd94d1d475944f0385239c0b1408e35"
+  integrity sha512-BVtq/DykVeIvRTJvRAgCsOwaGL8Un3Bxh8MbDxMhEWlZay3T4IpEKDEpwt5KZ0KJMHzgm6jrltxlT5eXOWXDHg==
+
 m3u8stream@^0.8.6:
   version "0.8.6"
   resolved "https://registry.yarnpkg.com/m3u8stream/-/m3u8stream-0.8.6.tgz#0d6de4ce8ee69731734e6b616e7b05dd9d9a55b1"

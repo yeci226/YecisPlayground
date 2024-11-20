@@ -5,21 +5,29 @@
 
 :root {
   /* 定義亮色主題變量 */
-  --bg: 0.97 0.01 275; /* 淺灰背景 */
-  --bc: 0.2 0.01 275; /* 深灰文字 */
+  --bg: 0.97 0.01 275;
+  --bc: 0.2 0.01 275;
   --a: 0.8763563318872611 0.07936695661761213 179.84149083374814;
   --tw-text-opacity: 1;
   --fallback-bg: oklch(var(--bg) / 1);
   --fallback-bc: oklch(var(--bc) / 1);
   --fallback-a: oklch(var(--a)/var(--tw-text-opacity));
+  --bg-opacity: 0;
+
+  --rank-5-color: #FF9C73;
+  --rank-4-color: #A37EBA;
+  --rank-3-color: #9198ac;
 }
 
 [data-theme="dark"] {
-  /* 定義暗色主題變量 */
-  --bg: 0.2 0.01 275; /* 深灰背景 */
-  --bc: 0.9 0.01 275; /* 淺灰文字 */
+  --bg: 0.2 0.01 275;
+  --bc: 0.9 0.01 275;
   --fallback-bg: oklch(var(--bg) / 1);
   --fallback-bc: oklch(var(--bc) / 1);
+  --bg-opacity: 1;
+  --rank-5-color: #FF7F50;
+  --rank-4-color: #9370DB;
+  --rank-3-color: #778899;
 }
 
 :root, [data-theme] {
@@ -33,9 +41,11 @@ html, body {
   width: 100%;
   margin: 0;
   background-color: var(--fallback-bg);
+  background-image: var(--backgroundImage);
   background-repeat: no-repeat;
   background-attachment: fixed;
   background-size: cover;
+  background-position: center;
   -ms-background-size: cover;
   -o-background-size: cover;
   -moz-background-size: cover;
@@ -46,7 +56,25 @@ body {
   min-height: 100vh; 
   background-color: var(--fallback-bg);
   overflow-y: auto;
-  transition: background-color 0.5s ease, color 0.5s ease;
+  transition: background-color 0.5s ease, 
+              color 0.5s ease,
+              background-image 0.5s ease;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('../assets/darkbg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-opacity);
+  transition: opacity 0.5s ease;
+  z-index: -1;
 }
 
 .themeSwitchContainer {

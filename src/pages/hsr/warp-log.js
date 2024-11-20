@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Head from "next/head";
 import styles from "../../public/css/Hsr.module.css";
+import { Copy } from "lucide-react";
 
 export default function Hsr() {
   const [response, setResponse] = useState(null);
@@ -11,6 +12,19 @@ export default function Hsr() {
   const [selectedRecords, setSelectedRecords] = useState(null);
   const [selectedRecordsData, setSelectedRecordsData] = useState(null);
   const [selectedRecordsIndex, setSelectedRecordsIndex] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression (New-Object Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/HSR/main/getwarps.ps1\")"'`
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // 2秒後重置
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const importLog = async () => {
     const logUrl = document.getElementById("logUrl").value;
@@ -49,8 +63,6 @@ export default function Hsr() {
   const handleTypeChange = (event) => {
     setSelectedType(event.target.value);
   };
-
-  console.log(response);
 
   // 處理顯示角色的抽卡紀錄
   const handleShowRecords = (groupIndex) => {
@@ -100,7 +112,10 @@ export default function Hsr() {
             )}
             <div className={styles.logInput}>
               <input id="logUrl" type="text" placeholder="請輸入連結" />
-              <button onClick={importLog}>匯入</button>
+              <button onClick={importLog} disabled={loading}>
+                {loading ? "正在匯入中..." : "匯入"}
+              </button>
+
               {!selectedRecords && response && (
                 <>
                   <select value={selectedType} onChange={handleTypeChange}>
@@ -119,8 +134,35 @@ export default function Hsr() {
                 </button>
               )}
             </div>
+            {!response && (
+              <>
+                <div className={styles.tipContainer}>
+                  <span className={styles.tipTitle}>如何取得連結？</span>
+                  <span className={styles.tipContent}>
+                    1. 在 PC 上打開崩壞：星穹鐵道
+                    <br />
+                    2. 打開遷躍的歷史紀錄
+                    <br />
+                    3. 打開 Windows PowerShell 並貼上以下指令
+                  </span>
+                  <div className={styles.tipCode}>
+                    <button className={styles.copyButton} onClick={handleCopy}>
+                      <Copy size={16} />
+                      {copied ? "已複製" : "複製"}
+                    </button>
+                    <code>
+                      Start-Process powershell -Verb runAs -ArgumentList
+                      '-NoExit -Command "Invoke-Expression (New-Object
+                      Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/HSR/main/getwarps.ps1\")"'
+                    </code>
+                  </div>
+                  <span className={styles.tipContent}>
+                    4. 將 PowerShell 輸出的連結貼上到上方的輸入框
+                  </span>
+                </div>
+              </>
+            )}
 
-            {loading && <div className={styles.response}>正在匯入中...</div>}
             {message && (
               <div className={styles.response} style={{ color: "#FF4545" }}>
                 {message}
@@ -129,45 +171,65 @@ export default function Hsr() {
           </div>
 
           {!selectedRecords && response && response[selectedType]?.data && (
-            <div className={styles.dataColumnContainer}>
-              {response[selectedType].data.map((group, groupIndex) => (
-                <>
-                  {group.map(
-                    (item, index) =>
-                      ((groupIndex == 0 && index == 0) || item.rank == 5) && (
-                        <div key={index} className={styles.dataColumnItem}>
-                          <img
-                            src={item.icon}
-                            alt={item.name}
-                            className={
-                              item.type === "character"
-                                ? styles.characterImg
-                                : ""
-                            }
-                          />
-                          <div
-                            className={styles.dataColumnItemCount}
-                            onClick={() => handleShowRecords(groupIndex)} // 點擊事件以顯示紀錄
-                            style={{
-                              borderRadius: "5px",
-                              width: `${group.length * 5}px`,
-                              backgroundColor:
-                                group.length <= 50
-                                  ? "#7ED4AD"
-                                  : group.length <= 70
-                                  ? "#FFBB5C"
-                                  : "#FF6969",
-                            }}
-                          >
-                            {groupIndex == 0 && "已墊池"}
-                            {group.length}抽
+            <>
+              <div className={styles.dataTitleContainer}>
+                <span className={styles.dataTitle}>
+                  {`共 ${response[selectedType].data
+                    .map((group) => group.length)
+                    .reduce((a, b) => a + b, 0)} 抽`}
+                </span>
+                {selectedRecordsIndex != 0 && (
+                  <>
+                    <span className={styles.dataTitle}>
+                      {`平均 ${response[selectedType].average} 抽一個五星`}
+                    </span>
+                    <span className={styles.dataTitle}>
+                      {`已墊 ${response[selectedType].pity} 抽`}
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className={styles.iconChangeContainer}></div>
+              <div className={styles.dataColumnContainer}>
+                {response[selectedType].data.map((group, groupIndex) => (
+                  <>
+                    {group.map(
+                      (item, index) =>
+                        ((groupIndex == 0 && index == 0) || item.rank == 5) && (
+                          <div key={index} className={styles.dataColumnItem}>
+                            <img
+                              src={item.icon}
+                              alt={item.name}
+                              className={
+                                item.type === "character"
+                                  ? styles.characterImg
+                                  : ""
+                              }
+                            />
+                            <div
+                              className={styles.dataColumnItemCount}
+                              onClick={() => handleShowRecords(groupIndex)} // 點擊事件以顯示紀錄
+                              style={{
+                                borderRadius: "5px",
+                                width: `${group.length * 5}px`,
+                                backgroundColor:
+                                  group.length <= 50
+                                    ? "#7ED4AD"
+                                    : group.length <= 70
+                                    ? "#FFBB5C"
+                                    : "#FF6969",
+                              }}
+                            >
+                              {groupIndex == 0 && "已墊池"}
+                              {group.length}抽
+                            </div>
                           </div>
-                        </div>
-                      )
-                  )}
-                </>
-              ))}
-            </div>
+                        )
+                    )}
+                  </>
+                ))}
+              </div>
+            </>
           )}
 
           {selectedRecords && (
@@ -228,6 +290,46 @@ export default function Hsr() {
                     </div>
                   </>
                 ))}
+              </div>
+              <div className={styles.dataListItemContainer}>
+                {[
+                  ...new Map(
+                    selectedRecordsData.map((item) => [item.name, item])
+                  ).values(),
+                ]
+                  .map((item) => ({
+                    ...item,
+                    count: selectedRecordsData.filter(
+                      (data) => data.name === item.name
+                    ).length,
+                  }))
+                  .sort((a, b) => {
+                    if (a.type !== b.type) {
+                      return a.type.localeCompare(b.type);
+                    }
+                    return b.rank - a.rank || b.count - a.count;
+                  })
+                  .map((item) => (
+                    <div key={item.name} className={styles.dataListItem}>
+                      <img
+                        src={item.icon}
+                        alt={item.name}
+                        className={
+                          item.type === "character" ? styles.characterImg : ""
+                        }
+                      />
+                      <p
+                        className={styles.count}
+                        style={{
+                          backgroundColor: `var(--rank-${item.rank}-color)`,
+                          backgroundSize:
+                            item.rank === "5" ? "100% 100%" : undefined,
+                        }}
+                      >
+                        x{item.count}
+                      </p>
+                    </div>
+                  ))}
               </div>
             </>
           )}
