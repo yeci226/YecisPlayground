@@ -298,8 +298,7 @@ export default function Player() {
   return (
     <div>
       <Head>
-        <title>Yeci Playground</title>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <title>野茨遊樂場 - 播放器</title>
       </Head>
 
       <div className={styles.contentContainer}>

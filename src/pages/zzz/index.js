@@ -6,8 +6,7 @@ export default function Zzz() {
   return (
     <div>
       <Head>
-        <title>Yeci Playground</title>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <title>野茨遊樂場 - 絕區零</title>
       </Head>
 
       <div className={styles.contentContainer}>
