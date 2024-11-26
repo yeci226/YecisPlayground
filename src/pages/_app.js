@@ -2,7 +2,7 @@ import "../public/css/globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Head from "next/head";
-import favicon from "../public/assets/icon.png";
+import favicon from "../public/assets/icon-192x192.png";
 
 function MyApp({ Component, pageProps }) {
   return (
