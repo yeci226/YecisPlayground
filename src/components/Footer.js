@@ -43,28 +43,45 @@ const Footer = () => {
   };
 
   return (
-    <footer
-      style={{
-        position: "fixed",
-        display: "flex",
-        flexDirection: "row",
-        right: 15,
-        bottom: 15,
-        color: currentTheme.textColor,
-      }}
-    >
-      <button
-        onClick={toggleTheme}
+    <>
+      <footer
         style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          opacity: 0.1,
+          width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
           color: currentTheme.textColor,
+          zIndex: 1000,
         }}
       >
-        <span dangerouslySetInnerHTML={{ __html: currentTheme.svg }} />
-      </button>
-    </footer>
+        <span>nerds</span>
+      </footer>
+      <footer
+        style={{
+          position: "fixed",
+          right: 15,
+          bottom: 15,
+          color: currentTheme.textColor,
+          zIndex: 1001,
+        }}
+      >
+        <button
+          onClick={toggleTheme}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: currentTheme.textColor,
+          }}
+        >
+          <span dangerouslySetInnerHTML={{ __html: currentTheme.svg }} />
+        </button>
+      </footer>
+    </>
   );
 };
 

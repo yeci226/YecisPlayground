@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import Head from "next/head";
 import styles from "../../public/css/Hsr.module.css";
 import { Copy } from "lucide-react";
+import showcase1 from "../../public/assets/hsr/showcase1.png";
+import showcase2 from "../../public/assets/hsr/showcase2.png";
 
 export default function Hsr() {
   const [response, setResponse] = useState(null);
@@ -157,6 +159,10 @@ export default function Hsr() {
                   <span className={styles.tipContent}>
                     4. 將 PowerShell 輸出的連結貼上到上方的輸入框
                   </span>
+                </div>
+                <div className={styles.showcaseContainer}>
+                  <img src={showcase1.src} alt="Showcase 1" />
+                  <img src={showcase2.src} alt="Showcase 2" />
                 </div>
               </>
             )}

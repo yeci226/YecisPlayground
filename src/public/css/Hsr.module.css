@@ -83,10 +83,25 @@
 
 .showcaseContainer {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
     align-items: center;
     margin-top: 3rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.showcaseContainer img {
+    max-width: 40%;
+    max-height: 100%;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.showcaseContainer img:hover {
+    transform: scale(1.5);
+    transition: transform 1s;
 }
 
 .title {

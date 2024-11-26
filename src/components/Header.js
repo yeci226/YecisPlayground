@@ -39,7 +39,6 @@ const Header = () => {
   return (
     <header className={styles.header}>
       <NavLink to="/">首頁</NavLink>
-      <NavLink to="/about">關於</NavLink>
       <div className={styles.dropdown} ref={dropdownRef1}>
         <button
           onClick={(e) => {
