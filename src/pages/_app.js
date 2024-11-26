@@ -17,7 +17,7 @@ function MyApp({ Component, pageProps }) {
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>野茨遊樂場</title>
-        <link rel="icon" href={favicon.src} />
+        <link rel="icon" href={favicon.src} sizes="192x192" />
         <meta property="og:title" content="野茨遊樂場" />
         <meta
           property="og:site_name"
