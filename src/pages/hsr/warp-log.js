@@ -100,6 +100,19 @@ export default function Hsr() {
     <div>
       <Head>
         <title>野茨遊樂場 - 崩壞：星穹鐵道抽卡紀錄</title>
+        <link rel="icon" href={favicon.src} />
+        <meta
+          property="og:title"
+          content="野茨遊樂場 - 崩壞：星穹鐵道抽卡紀錄"
+        />
+        <meta
+          property="og:site_name"
+          content="野茨遊樂場 - 崩壞：星穹鐵道抽卡紀錄"
+        />
+        <meta
+          property="og:description"
+          content="在這裡匯入崩壞：星穹鐵道抽卡紀錄，查看已墊池、平均抽卡數等資訊"
+        />
       </Head>
 
       <div className={styles.background}>

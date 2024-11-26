@@ -299,6 +299,13 @@ export default function Player() {
     <div>
       <Head>
         <title>野茨遊樂場 - 播放器</title>
+        <link rel="icon" href={favicon.src} />
+        <meta property="og:title" content="野茨遊樂場 - 播放器" />
+        <meta property="og:site_name" content="野茨遊樂場 - 播放器" />
+        <meta
+          property="og:description"
+          content="加入房間，與朋友共享音樂播放列表🎶"
+        />
       </Head>
 
       <div className={styles.contentContainer}>

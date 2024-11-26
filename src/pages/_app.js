@@ -20,12 +20,16 @@ function MyApp({ Component, pageProps }) {
         <link rel="icon" href={favicon.src} />
         <meta property="og:title" content="野茨遊樂場" />
         <meta
+          property="og:site_name"
+          content="Yeci's Playground - 野茨遊樂場"
+        />
+        <meta
           property="og:description"
           content="Yeci 開發過的專案及小工具都在這裡🤓"
         />
         <meta
           property="og:image"
-          content="https://yecisplayground.vercel.app/assets/icon.png"
+          content="https://raw.githubusercontent.com/yeci226/YecisPlayground/d9a2db236c68b1438ec20e32bb89697db2d10fd5/src/public/assets/icon.png?token=GHSAT0AAAAAACX2GSOH65FSM7WWDQYO3AESZ2FZMRQ"
         />
         <meta property="og:url" content="https://yecisplayground.vercel.app" />
         <meta property="og:type" content="website" />
