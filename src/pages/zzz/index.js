@@ -1,6 +1,6 @@
 import React from "react";
 import Head from "next/head";
-import styles from "../../public/css/About.module.css";
+import styles from "../../public/css/Index.module.css";
 
 export default function Zzz() {
   return (
