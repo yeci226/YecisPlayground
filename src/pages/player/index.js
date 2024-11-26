@@ -299,7 +299,6 @@ export default function Player() {
     <div>
       <Head>
         <title>野茨遊樂場 - 播放器</title>
-        <link rel="icon" href={favicon.src} />
         <meta property="og:title" content="野茨遊樂場 - 播放器" />
         <meta property="og:site_name" content="野茨遊樂場 - 播放器" />
         <meta

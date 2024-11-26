@@ -100,7 +100,6 @@ export default function Hsr() {
     <div>
       <Head>
         <title>野茨遊樂場 - 崩壞：星穹鐵道抽卡紀錄</title>
-        <link rel="icon" href={favicon.src} />
         <meta
           property="og:title"
           content="野茨遊樂場 - 崩壞：星穹鐵道抽卡紀錄"
