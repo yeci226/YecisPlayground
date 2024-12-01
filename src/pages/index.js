@@ -40,6 +40,9 @@ import zqndaIamge from "../public/assets/index/zqnda.png";
 import unknown1Image from "../public/assets/index/unknown1.png";
 import unknown2Image from "../public/assets/index/unknown2.png";
 import unknown3Image from "../public/assets/index/unknown3.png";
+import corin1Image from "../public/assets/index/corin1.png";
+import corin2Image from "../public/assets/index/corin2.png";
+import corin3Image from "../public/assets/index/corin3.png";
 
 export default function About() {
   const typingRefH1 = useRef(null);
@@ -56,9 +59,11 @@ export default function About() {
 
         const typeCharacter = () => {
           if (index < text.length) {
-            element.textContent += text[index];
-            index++;
-            setTimeout(typeCharacter, delay);
+            if (element.textContent) {
+              element.textContent += text[index];
+              index++;
+              setTimeout(typeCharacter, delay);
+            }
           } else {
             if (callback) callback();
           }
@@ -92,6 +97,7 @@ export default function About() {
       hsr5Image.src,
       hsr6Image.src,
     ],
+    corin: [corin1Image.src, corin2Image.src, corin3Image.src],
     haneko: [hanekoImage.src],
     outo: [outo1Image.src, outo2Image.src],
     yeci: [
@@ -204,11 +210,13 @@ export default function About() {
               </a>
             </div>
           </div>
-          <img
-            src="https://avatars.githubusercontent.com/u/88837499?v=4"
-            alt="Profile"
-            className={styles.profileImage}
-          />
+          <a href="https://github.com/yeci226" target="_blank">
+            <img
+              src="https://avatars.githubusercontent.com/u/88837499?v=4"
+              alt="Profile"
+              className={styles.profileImage}
+            />
+          </a>
         </div>
         <div className={styles.repoListContainer}>
           <span>開發及參與的專案</span>
@@ -219,9 +227,9 @@ export default function About() {
           >
             {/* Repositories Web */}
             <div className={styles.repoCard}>
-              <a href="/">Yeci's Playground (此網頁)</a>
+              <a href="/">Yeci's Playground (此網站)</a>
               <p>包含了我的介紹和一些小工具的網站</p>
-              <p className={styles.small}>主要開發者 / Next.js 開發</p>
+              <p className={styles.small}>主要開發者 / 網站 / Next.js 開發</p>
               <AutoSwitchImage
                 images={projectImages.playground}
                 interval={5000}
@@ -230,26 +238,30 @@ export default function About() {
             <div className={styles.repoCard}>
               <a href="/">AET2023</a>
               <p>亞洲最大非官方Brawl Stars賽事 AET2023 官方網站</p>
-              <p className={styles.small}>主要開發者 / Next.js 開發</p>
+              <p className={styles.small}>主要開發者 / 網站 / Next.js 開發</p>
               <AutoSwitchImage images={projectImages.aet2023} interval={5000} />
               <p className={styles.date}></p>
             </div>
             <div className={styles.repoCard}>
               <a href="/">AET2024</a>
               <p>亞洲最大非官方Brawl Stars賽事 AET2024 官方網站</p>
-              <p className={styles.small}>主要開發者 / Express.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / 網站 / Express.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.aet2024} interval={5000} />
             </div>
             <div className={styles.repoCard}>
               <a href="/">土撥鼠圖書館</a>
               <p>土撥鼠與登入借還書網站</p>
-              <p className={styles.small}>主要開發者 / Next.js 開發</p>
+              <p className={styles.small}>主要開發者 / 網站 / Next.js 開發</p>
               <AutoSwitchImage images={projectImages.marmot} interval={5000} />
             </div>
             <div className={styles.repoCard}>
               <a href="/">客服單系統</a>
               <p>Discord伺服器客服單網站</p>
-              <p className={styles.small}>主要開發者 / Express.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / 網站 / Express.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.ticket} interval={5000} />
             </div>
             {/* Repositories Discord Bots */}
@@ -266,7 +278,9 @@ export default function About() {
                 </a>
               </div>
               <p>崩壞：星穹鐵道 Discord 機器人</p>
-              <p className={styles.small}>主要開發者 / Node.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / Discord 機器人 / Node.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.hsr} interval={5000} />
             </div>
             {/* Corin */}
@@ -282,8 +296,10 @@ export default function About() {
                 </a>
               </div>
               <p>絕區零 Discord 機器人</p>
-              <p className={styles.small}>主要開發者 / Node.js 開發</p>
-              <AutoSwitchImage images={projectImages.hsr} interval={5000} />
+              <p className={styles.small}>
+                主要開發者 / Discord 機器人 / Node.js 開發
+              </p>
+              <AutoSwitchImage images={projectImages.corin} interval={5000} />
             </div>
             {/* Haneko */}
             <div className={styles.repoCard}>
@@ -298,7 +314,9 @@ export default function About() {
                 </a>
               </div>
               <p>能夠在 Discord 上和朋友一起看 nHentai 的機器人</p>
-              <p className={styles.small}>主要開發者 / Node.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / Discord 機器人 / Node.js 開發
+              </p>
               <div className={styles.blurTip}>
                 <span className={styles.textCenter}>移動到這裡以顯示圖片</span>
                 <div className={styles.blur}>
@@ -322,7 +340,9 @@ export default function About() {
                 </a>
               </div>
               <p>在 Discord 伺服器中添加自訂詞彙並自動回覆的小幫手</p>
-              <p className={styles.small}>主要開發者 / Node.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / Discord 機器人 / Node.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.outo} interval={5000} />
             </div>
             {/* イェチ */}
@@ -336,7 +356,9 @@ export default function About() {
                 <br />
                 包含動態語音頻道、音樂播放、AI繪圖和其他小功能
               </p>
-              <p className={styles.small}>主要開發者 / Node.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / Discord 機器人 / Node.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.yeci} interval={5000} />
             </div>
             {/* Zqnda */}
@@ -346,7 +368,9 @@ export default function About() {
                 <a href="/">Zqnda</a>
               </div>
               <p>Discord 音樂機器人</p>
-              <p className={styles.small}>中文翻譯 / Node.js 開發</p>
+              <p className={styles.small}>
+                中文翻譯 / Discord 機器人 / Node.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.zqnda} interval={5000} />
             </div>
             {/* Unknown */}
@@ -360,7 +384,9 @@ export default function About() {
                 <br />
                 如訊息/語音紀錄、每周遊玩時數統計、抽獎小遊戲
               </p>
-              <p className={styles.small}>主要開發者 / Node.js 開發</p>
+              <p className={styles.small}>
+                主要開發者 / Discord 機器人 / Node.js 開發
+              </p>
               <AutoSwitchImage images={projectImages.unknown} interval={5000} />
             </div>
           </Masonry>
