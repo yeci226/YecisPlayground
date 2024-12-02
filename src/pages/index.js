@@ -59,7 +59,7 @@ export default function About() {
 
         const typeCharacter = () => {
           if (index < text.length) {
-            if (element.textContent) {
+            if (element) {
               element.textContent += text[index];
               index++;
               setTimeout(typeCharacter, delay);

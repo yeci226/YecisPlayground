@@ -1,5 +1,14 @@
 import redis from "../../../../lib/redis";
 
+function isJson(str) {
+  try {
+    JSON.parse(str);
+  } catch (e) {
+    return false;
+  }
+  return true;
+}
+
 export default async function handler(req, res) {
   const { id } = req.query;
 
@@ -23,7 +32,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Room not found" });
     }
 
-    const room = JSON.parse(roomDataStr);
+    const room = isJson(roomDataStr) ? JSON.parse(roomDataStr) : roomDataStr;
 
     // 更新 repeatMode
     room.repeatMode = repeatMode;

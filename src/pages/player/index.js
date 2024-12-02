@@ -21,12 +21,14 @@ export default function Player() {
   const [volume, setVolume] = useState(0.1);
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackId, setCurrentTrackId] = useState(null);
-  const [repeatMode, setRepeatMode] = useState("none");
+  const [repeatMode, setRepeatMode] = useState("playlist");
   const [userCount, setUserCount] = useState(0);
+  const [savedPlaylists, setSavedPlaylists] = useState([]);
+
   const timePercentage = (currentTime / duration) * 100;
   const volumePercentage = volume * 100;
   const text =
-    userCount > 1 ? `在線人數 ${userCount} 人` : "我們一起播放音樂吧！";
+    userCount > 1 ? `在線人數${userCount}人` : "我們一起播放音樂吧！";
 
   useEffect(() => {
     const handleError = (event) => {
@@ -83,7 +85,7 @@ export default function Player() {
         if (playing) syncPlaybackProgress();
 
         // 同步循環模式
-        setRepeatMode("playlist");
+        setRepeatMode(repeatMode || "none");
       } catch (error) {
         console.error("同步房間狀態失敗:", error);
       }
@@ -92,16 +94,19 @@ export default function Player() {
     // 初始同步
     syncRoomState();
 
-    // 定期同步
-    const intervalId = setInterval(syncRoomState, 3000);
+    // 增加同步間隔到10秒
+    const intervalId = setInterval(syncRoomState, 10000);
 
     return () => clearInterval(intervalId);
   }, [id, currentTrackId, playing]);
 
   useEffect(() => {
     if (!id) return;
-    const userId = localStorage.getItem("userId") || uuidv4();
-    localStorage.setItem("userId", userId);
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      const newUserId = uuidv4();
+      localStorage.setItem("userId", newUserId);
+    }
 
     const joinRoom = async () => {
       await fetch(`/api/room/${id}/join`, {
@@ -203,11 +208,115 @@ export default function Player() {
         }
       } catch (error) {
         console.error("更新當前曲目失敗:", error);
-        // 可以添加重試邏輯或使用者通知
       }
     },
     [id, repeatMode]
   );
+
+  const updatePlaylist = (newPlaylist) => {
+    setPlaylist(newPlaylist);
+  };
+
+  const Playlist = ({
+    playlist,
+    currentTrackId,
+    selectTrack,
+    handleRemoveTrack,
+    updatePlaylist,
+  }) => {
+    const handleDragStart = (event, index) => {
+      event.dataTransfer.setData("trackIndex", index);
+    };
+
+    const handleDragOver = (event) => {
+      event.preventDefault(); // 必須阻止預設行為，否則無法觸發 drop
+    };
+
+    const handleDrop = (event, dropIndex) => {
+      const draggedIndex = parseInt(
+        event.dataTransfer.getData("trackIndex"),
+        10
+      );
+
+      // 如果拖拽目標和落下目標相同，則不執行任何操作
+      if (draggedIndex === dropIndex) return;
+
+      const updatedPlaylist = [...playlist];
+      const [draggedTrack] = updatedPlaylist.splice(draggedIndex, 1); // 移除拖動項
+      updatedPlaylist.splice(dropIndex, 0, draggedTrack); // 插入到新的位置
+
+      updatePlaylist(updatedPlaylist); // 更新播放清單
+    };
+
+    return (
+      <ul>
+        {playlist.map((track, index) => (
+          <li
+            key={track.id}
+            draggable // 啟用拖放
+            onDragStart={(event) => handleDragStart(event, index)}
+            onDragOver={handleDragOver}
+            onDrop={(event) => handleDrop(event, index)}
+            onClick={() => selectTrack(index)}
+            className={`${styles.trackElement} ${
+              track.id === currentTrackId ? styles.active : styles.inactive
+            }`}
+            style={{
+              position: "relative",
+              color: track.id === currentTrackId ? "#86AB89" : "grey",
+              cursor: track.id === currentTrackId ? "default" : "pointer",
+            }}
+          >
+            <>
+              {track.id === currentTrackId ? (
+                <button
+                  className={styles.removeButton}
+                  style={{ cursor: "default" }}
+                >
+                  🎵
+                </button>
+              ) : (
+                <button
+                  className={styles.removeButton}
+                  onClick={(event) => handleRemoveTrack(event, track.id)}
+                >
+                  ❌
+                </button>
+              )}
+            </>
+            {track.thumbnail && (
+              <img
+                src={track.thumbnail}
+                alt={track.title}
+                className={styles.thumbnail}
+              />
+            )}
+            <span
+              style={{
+                marginRight: "5px",
+                overflow: "hidden",
+              }}
+            >
+              {track.title}
+            </span>
+            <span className={styles.addedBy}>Added by: {track.addedBy}</span>
+            <span
+              className={styles.dragHandle}
+              style={{
+                cursor: "grab",
+                userSelect: "none",
+                color: "grey",
+                fontSize: "1.2rem",
+                marginLeft: "auto",
+              }}
+            >
+              ⋮
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   const selectTrack = useCallback(
     (index) => {
@@ -223,11 +332,123 @@ export default function Player() {
         setCurrentTrackId(track.id);
         updateCurrentTrack(track.id, true, true);
 
+        // 如果音軌相同，則重置播放進度
+        if (track.url === audioSrc) playerRef.current.seekTo(0);
+
         console.log(`已切換至音軌: ${track.title}`);
       }
     },
     [playlist, updateCurrentTrack, playerRef]
   );
+
+  const savePlaylist = () => {
+    try {
+      const playlistName = prompt("請輸入播放清單名稱:");
+      if (!playlistName) return;
+      if (playlistName.length > 16) {
+        alert("播放清單名稱不得超過16個字元");
+        return;
+      }
+
+      const savedList = {
+        id: uuidv4(),
+        name: playlistName,
+        tracks: playlist,
+        createdAt: new Date().toISOString(),
+        addedBy:
+          localStorage.getItem("userName") ||
+          localStorage.getItem("userId").slice(0, 8),
+      };
+
+      const existingPlaylists = JSON.parse(
+        localStorage.getItem("savedPlaylists") || "[]"
+      );
+      const updatedPlaylists = [...existingPlaylists, savedList];
+
+      localStorage.setItem("savedPlaylists", JSON.stringify(updatedPlaylists));
+      setSavedPlaylists(updatedPlaylists);
+      alert(`播放清單 "${playlistName}" 已儲存`);
+    } catch (error) {
+      console.error("儲存播放清單時發生錯誤:", error);
+      alert("儲存播放清單失敗");
+    }
+  };
+
+  useEffect(() => {
+    const storedPlaylists = localStorage.getItem("savedPlaylists");
+    if (storedPlaylists) {
+      setSavedPlaylists(JSON.parse(storedPlaylists));
+    }
+  }, []);
+
+  const deleteSavedPlaylist = (playlistId) => {
+    try {
+      const confirmed = window.confirm("確定要刪除這個播放清單嗎？");
+      if (confirmed) {
+        const updatedPlaylists = savedPlaylists.filter(
+          (pl) => pl.id !== playlistId
+        );
+        localStorage.setItem(
+          "savedPlaylists",
+          JSON.stringify(updatedPlaylists)
+        );
+        setSavedPlaylists(updatedPlaylists);
+      }
+    } catch (error) {
+      console.error("刪除播放清單時發生錯誤:", error);
+      alert("刪除播放清單失敗");
+    }
+  };
+
+  const loadSavedPlaylist = (playlistId) => {
+    try {
+      const savedPlaylist = savedPlaylists.find((pl) => pl.id === playlistId);
+      if (!savedPlaylist) return;
+
+      const initializePlayback = (tracks) => {
+        if (!currentTrackId && tracks.length > 0) {
+          const firstTrack = tracks[0];
+          setAudioSrc(firstTrack.url);
+          setCurrentTrackId(firstTrack.id);
+          setPlaying(true);
+        }
+        updateCurrentTrack(tracks[0]?.id, true);
+      };
+
+      const handleDuplicateTracks = (newTracks, currentTracks) => {
+        return newTracks.map((track) => {
+          const isDuplicate = currentTracks.some((t) => t.id === track.id);
+          if (isDuplicate) {
+            return { ...track, id: uuidv4() };
+          }
+          return track;
+        });
+      };
+
+      if (savedPlaylist.tracks.length === 0) {
+        setPlaylist(savedPlaylist.tracks);
+        initializePlayback(savedPlaylist.tracks);
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "是否要插入這個播放清單到當前播放清單？"
+      );
+
+      if (confirmed) {
+        const uniqueTracks = handleDuplicateTracks(
+          savedPlaylist.tracks,
+          playlist
+        );
+        const newPlaylist = [...playlist, ...uniqueTracks];
+        setPlaylist(newPlaylist);
+        initializePlayback(newPlaylist);
+      }
+    } catch (error) {
+      console.error("載入播放清單時發生錯誤:", error);
+      alert("載入播放清單失敗");
+    }
+  };
 
   const toggleRepeatMode = async () => {
     const newMode =
@@ -239,8 +460,8 @@ export default function Player() {
 
     setRepeatMode(newMode);
 
-    // 將循環模式同步到伺服器
     try {
+      // 立即更新房間的重複模式
       await fetch(`/api/room/${id}/repeatMode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -252,56 +473,62 @@ export default function Player() {
   };
 
   const playNextTrack = async () => {
+    if (playlist.length === 0) return;
+
     const currentIndex = playlist.findIndex(
       (track) => track.id === currentTrackId
     );
 
     let nextTrack;
     if (repeatMode === "single") {
-      nextTrack = playlist[currentIndex]; // 單曲循環播放當前曲目
+      nextTrack = playlist[currentIndex];
     } else if (repeatMode === "playlist") {
-      nextTrack = playlist[(currentIndex + 1) % playlist.length]; // 歌單循環
+      nextTrack = playlist[(currentIndex + 1) % playlist.length];
     } else {
-      nextTrack = playlist[currentIndex + 1]; // 順序播放
+      nextTrack = playlist[currentIndex + 1] || null;
     }
 
     if (nextTrack) {
       setAudioSrc(nextTrack.url);
       setPlaying(true);
       setCurrentTrackId(nextTrack.id);
-      updateCurrentTrack(nextTrack.id, true, true);
+
+      await updateCurrentTrack(nextTrack.id, true, true);
     } else {
-      setPlaying(false); // 若無下一首，停止播放
-      updateCurrentTrack(currentTrackId, false);
+      setPlaying(false);
+      await updateCurrentTrack(currentTrackId, false);
     }
   };
 
-  const playPreviousTrack = () => {
+  const playPreviousTrack = async () => {
+    if (playlist.length === 0) return;
+
     const currentIndex = playlist.findIndex(
       (track) => track.id === currentTrackId
     );
 
     let prevTrack;
     if (repeatMode === "single") {
-      prevTrack = playlist[currentIndex]; // 單曲循環播放當前曲目
+      prevTrack = playlist[currentIndex];
     } else if (repeatMode === "playlist") {
       prevTrack =
         currentIndex - 1 >= 0
           ? playlist[currentIndex - 1]
-          : playlist[playlist.length - 1]; // 循環播放
+          : playlist[playlist.length - 1];
     } else {
-      prevTrack = currentIndex - 1 >= 0 ? playlist[currentIndex - 1] : null; // 順序播放
+      prevTrack = currentIndex - 1 >= 0 ? playlist[currentIndex - 1] : null;
     }
 
     if (prevTrack) {
       setAudioSrc(prevTrack.url);
       setPlaying(true);
       setCurrentTrackId(prevTrack.id);
-      updateCurrentTrack(prevTrack.id, true, true);
+
+      await updateCurrentTrack(prevTrack.id, true, true);
     }
   };
 
-  const playRandomTrack = () => {
+  const playRandomTrack = async () => {
     if (playlist.length > 0) {
       let randomTrack;
       do {
@@ -311,14 +538,14 @@ export default function Player() {
       setAudioSrc(randomTrack.url);
       setPlaying(true);
       setCurrentTrackId(randomTrack.id);
-      updateCurrentTrack(randomTrack.id, true);
+      await updateCurrentTrack(randomTrack.id, true);
     }
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     const newPlayingStatus = !playing;
     setPlaying(newPlayingStatus);
-    updateCurrentTrack(currentTrackId, newPlayingStatus);
+    await updateCurrentTrack(currentTrackId, newPlayingStatus);
   };
 
   const handleLinkChange = (event) => {
@@ -330,6 +557,11 @@ export default function Player() {
       alert(`無法播放此連結\n${inputValue}`);
       setInputValue("");
       return;
+    }
+
+    if (localStorage.getItem("userName") === null) {
+      const userName = prompt("請輸入你的使用者名稱:");
+      if (userName) localStorage.setItem("userName", userName);
     }
 
     try {
@@ -345,9 +577,10 @@ export default function Player() {
           url: inputValue,
           title: newTrackTitle,
           thumbnail: newTrackThumbnail,
+          addedBy:
+            localStorage.getItem("userName") ||
+            localStorage.getItem("userId").slice(0, 8),
         };
-
-        console.log("newTrack", newTrack);
 
         if (roomResponse.ok) {
           const newPlaylist = [...playlist, newTrack];
@@ -461,67 +694,50 @@ export default function Player() {
           {audioSrc && playlist?.length > 0 && (
             <div className={styles.playlistContainer}>
               <div
-                style={{ display: "flex", flexDirection: "row", gap: "30px" }}
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  padding: "0 10px 0 10px",
+                }}
               >
-                <h2>共用播放列表 - {playlist.length} 首歌曲</h2>
-                {/* <button
+                <h1
+                  style={{
+                    paddingTop: "0",
+                    fontSize: "calc(0.8rem + 0.6vw)",
+                  }}
+                >
+                  共用播放列表-{playlist.length}首歌曲
+                </h1>
+                <button
                   className={styles.button}
-                  style={{ maxWidth: "20vw", width: "100px" }}
+                  style={{
+                    outlineColor: "#F95454",
+                    color: "#F95454",
+                    height: "min-content",
+                  }}
                   onClick={() => setPlaylist([])}
                 >
                   清空歌單
-                </button> */}
+                </button>
               </div>
+              <span
+                style={{
+                  fontSize: "calc(0.5rem + 0.4vw)",
+                  margin: "0 10px 0 10px",
+                  color: "##868686",
+                }}
+              >
+                可以拖移來更改播放順序
+              </span>
 
-              <ul>
-                {playlist.map((track) => (
-                  <li
-                    key={track.id}
-                    onClick={() => selectTrack(playlist.indexOf(track))}
-                    className={`${styles.trackElement} ${
-                      track.id === currentTrackId
-                        ? styles.active
-                        : styles.inactive
-                    }`}
-                    style={{
-                      color: track.id === currentTrackId ? "#86AB89" : "grey",
-                      cursor:
-                        track.id === currentTrackId ? "default" : "pointer",
-                    }}
-                  >
-                    <>
-                      {track.id === currentTrackId ? (
-                        <button
-                          className={styles.removeButton}
-                          style={{ cursor: "default" }}
-                        >
-                          🎵
-                        </button>
-                      ) : (
-                        <button
-                          className={styles.removeButton}
-                          onClick={(event) =>
-                            handleRemoveTrack(event, track.id)
-                          }
-                        >
-                          ❌
-                        </button>
-                      )}
-                    </>
-                    {playlist[playlist.indexOf(track)].thumbnail && (
-                      <img
-                        src={playlist[playlist.indexOf(track)].thumbnail}
-                        alt={playlist[playlist.indexOf(track)].title}
-                        className={styles.thumbnail}
-                      />
-                    )}
-                    {playlist[playlist.indexOf(track)].title.length > 50
-                      ? playlist[playlist.indexOf(track)].title.slice(0, 50) +
-                        "..."
-                      : playlist[playlist.indexOf(track)].title}
-                  </li>
-                ))}
-              </ul>
+              <Playlist
+                playlist={playlist}
+                currentTrackId={currentTrackId}
+                selectTrack={selectTrack}
+                handleRemoveTrack={handleRemoveTrack}
+                updatePlaylist={updatePlaylist}
+              />
             </div>
           )}
 
@@ -581,45 +797,54 @@ export default function Player() {
                   </div>
                 </div>
 
-                {/* <div className={styles.controlPanel}>
-                  <button
-                    className={styles.button}
-                    onClick={playRandomTrack}
-                    title="隨機播放"
-                  >
-                    隨機播放
-                  </button>
-                  <button
-                    className={styles.button}
-                    onClick={playPreviousTrack}
-                    title="播放上一首"
-                  >
-                    上一首
-                  </button>
-                  <button
-                    className={styles.button}
-                    onClick={togglePlayPause}
-                    title={playing ? "暫停" : "播放"}
-                  >
-                    {playing ? "暫停" : "播放"}
-                  </button>
-                  <button
-                    className={styles.button}
-                    onClick={playNextTrack}
-                    title="播放下一首"
-                  >
-                    下一首
-                  </button>
-                  <button
-                    className={styles.button}
-                    onClick={toggleRepeatMode}
-                    title="循環模式"
-                  >
-                    {repeatMode === "none" && <span>關閉循環</span>}
-                    {repeatMode === "single" && <span>單曲循環</span>}
-                    {repeatMode === "playlist" && <span>歌單循環</span>}
-                  </button>
-                </div> */}
+                {audioSrc && playlist?.length > 0 && (
+                  <div className={styles.controlPanel}>
+                    <button
+                      className={styles.button}
+                      onClick={savePlaylist}
+                      title="儲存當前播放清單"
+                    >
+                      儲存清單
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={playRandomTrack}
+                      title="隨機播放"
+                    >
+                      隨機播放
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={playPreviousTrack}
+                      title="播放上一首"
+                    >
+                      上一首
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={togglePlayPause}
+                      title={playing ? "暫停" : "播放"}
+                    >
+                      {playing ? "暫停" : "播放"}
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={playNextTrack}
+                      title="播放下一首"
+                    >
+                      下一首
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={toggleRepeatMode}
+                      title="循環模式"
+                    >
+                      {repeatMode === "none" && <span>關閉循環</span>}
+                      {repeatMode === "single" && <span>單曲循環</span>}
+                      {repeatMode === "playlist" && <span>歌單循環</span>}
+                    </button>
+                  </div>
+                )}
 
                 <div className={styles.volumeControl}>
                   <p>音量：{Math.round(volume * 100)}%</p>
@@ -638,6 +863,30 @@ export default function Player() {
             </div>
           )}
         </div>
+
+        {savedPlaylists.length > 0 && (
+          <div className={styles.savedPlaylistsContainer}>
+            <a>已儲存的播放清單 (點擊以載入)</a>
+            {savedPlaylists.map((pl) => (
+              <div key={pl.id} className={styles.savedPlaylistItem}>
+                <span
+                  className={styles.button}
+                  onClick={() => loadSavedPlaylist(pl.id)}
+                >
+                  {pl.name} - {pl.tracks.length}首單曲 (建立於:{" "}
+                  {new Date(pl.createdAt).toLocaleString()})
+                </span>
+                <button
+                  className={styles.button}
+                  style={{ outlineColor: "#F95454", color: "#F95454" }}
+                  onClick={() => deleteSavedPlaylist(pl.id)}
+                >
+                  刪除
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
