@@ -33,7 +33,7 @@ export default function Player() {
 
     try {
       const ws = new WebSocket(
-        "wss://eccd-2001-df2-45c1-18-00-1.ngrok-free.app:4400"
+        "wss://9e03-2001-df2-45c1-18-00-1.ngrok-free.app"
       );
 
       ws.onopen = () => {
@@ -241,7 +241,7 @@ export default function Player() {
       setCurrentTrack(nextTrack);
       setPlaybackState((prev) => ({ ...prev, progress: 0 }));
       sendMessage("updateTrack", {
-        currentTrack: { ...firstTrack, progress: 0 },
+        currentTrack: { ...nextTrack, progress: 0 },
         playing: true,
       });
     }
