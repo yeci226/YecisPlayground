@@ -33,7 +33,7 @@ export default function Player() {
 
     try {
       const ws = new WebSocket(
-        "ws://eccd-2001-df2-45c1-18-00-1.ngrok-free.app:4400"
+        "wss://eccd-2001-df2-45c1-18-00-1.ngrok-free.app:4400"
       );
 
       ws.onopen = () => {
