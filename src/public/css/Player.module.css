@@ -92,7 +92,8 @@
   border-radius: 10px;
   color: var(--fallback-bc);
   font-size: calc(7.5px + 0.5vw);
-  padding: calc(2px + 0.5vw) calc(3px + 0.5vw) calc(2px + 0.5vw) calc(3px + 0.5vw);
+  padding: calc(2px + 0.5vw) calc(3px + 0.5vw) calc(2px + 0.5vw)
+    calc(3px + 0.5vw);
   border: none;
   cursor: pointer;
   user-select: none;

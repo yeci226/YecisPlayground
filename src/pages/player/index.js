@@ -22,13 +22,11 @@ export default function Player() {
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackId, setCurrentTrackId] = useState(null);
   const [repeatMode, setRepeatMode] = useState("playlist");
-  const [userCount, setUserCount] = useState(0);
   const [savedPlaylists, setSavedPlaylists] = useState([]);
 
   const timePercentage = (currentTime / duration) * 100;
   const volumePercentage = volume * 100;
-  const text =
-    userCount > 1 ? `在線人數${userCount}人` : "我們一起播放音樂吧！";
+  const text = "我們一起播放音樂吧！";
 
   useEffect(() => {
     const handleError = (event) => {
@@ -51,127 +49,53 @@ export default function Player() {
     if (!id) return;
 
     const syncRoomState = async () => {
-      console.log("同步房間狀態");
+      if (!id) return;
       try {
         const response = await fetch(`/api/room/${id}`);
-        const roomData = await response.json();
-        if (!roomData) return;
+        if (!response.ok) throw new Error("Failed to fetch room data");
+        const data = await response.json();
 
-        const { playlist, currentTrack, repeatMode } = roomData;
+        console.log("同步房間數據:", data);
 
-        // 同步播放列表
-        setPlaylist(playlist);
-
-        // 同步播放進度
-        const syncPlaybackProgress = () => {
-          const timeDiff = (Date.now() - currentTrack.lastUpdatedAt) / 1000;
-          const serverCurrentTime = currentTrack.currentTime + timeDiff;
-          const currentPlayerTime = playerRef.current.getCurrentTime();
-
-          if (Math.abs(serverCurrentTime - currentPlayerTime) > 2) {
-            playerRef.current.seekTo(serverCurrentTime);
-          }
-        };
-
-        if (currentTrack.id !== currentTrackId) {
-          const track = playlist.find((t) => t.id === currentTrack.id);
-          if (track) {
-            setAudioSrc(track.url);
-            setCurrentTrackId(currentTrack.id);
-            setPlaying(currentTrack.playing);
-          }
+        // 更新播放列表
+        if (JSON.stringify(data.playlist) !== JSON.stringify(playlist)) {
+          setPlaylist(data.playlist);
         }
 
-        if (playing) syncPlaybackProgress();
-
-        // 同步循環模式
-        setRepeatMode(repeatMode || "none");
-      } catch (error) {
-        console.error("同步房間狀態失敗:", error);
-      }
-    };
-
-    // 初始同步
-    syncRoomState();
-
-    // 增加同步間隔到10秒
-    const intervalId = setInterval(syncRoomState, 10000);
-
-    return () => clearInterval(intervalId);
-  }, [id, currentTrackId, playing]);
-
-  useEffect(() => {
-    if (!id) return;
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      const newUserId = uuidv4();
-      localStorage.setItem("userId", newUserId);
-    }
-
-    const joinRoom = async () => {
-      await fetch(`/api/room/${id}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-    };
-
-    joinRoom();
-
-    return () => {
-      const leaveRoom = async () => {
-        await fetch(`/api/room/${id}/leave`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId }),
-        });
-      };
-      leaveRoom();
-    };
-  }, [id]);
-
-  useEffect(() => {
-    if (!id) return;
-    const fetchPlaylistAndCurrentTrack = async () => {
-      try {
-        const response = await fetch(`/api/room/${id}`);
-        const { playlist, currentTrack } = await response.json();
-
-        setPlaylist(playlist);
-
+        // 更新当前曲目
+        const currentTrack = data.currentTrack;
         if (
           currentTrack.id !== currentTrackId ||
           currentTrack.playing !== playing
         ) {
           setCurrentTrackId(currentTrack.id);
           setPlaying(currentTrack.playing);
-          const track = playlist.find((t) => t.id === currentTrack.id);
-          if (track) {
-            setAudioSrc(track.url);
+          const track = data.playlist.find((t) => t.id === currentTrack.id);
+          if (track) setAudioSrc(track.url);
+        }
+
+        setRepeatMode(repeatMode || "none");
+
+        if (playerRef.current && currentTrack.id === currentTrackId) {
+          const serverCurrentTime =
+            currentTrack.currentTime +
+            (Date.now() - currentTrack.lastUpdatedAt) / 1000;
+          const currentPlayerTime = playerRef.current.getCurrentTime();
+          if (Math.abs(serverCurrentTime - currentPlayerTime) > 2) {
+            playerRef.current.seekTo(serverCurrentTime);
           }
         }
       } catch (error) {
-        console.error("Error fetching playlist or current track:", error);
+        console.error("同步房間狀態失敗:", error);
       }
     };
 
-    fetchPlaylistAndCurrentTrack();
-    const intervalId = setInterval(fetchPlaylistAndCurrentTrack, 3000);
+    syncRoomState();
+
+    const intervalId = setInterval(syncRoomState, 15000);
+
     return () => clearInterval(intervalId);
-  }, [currentTrackId, playing]);
-
-  const updateUserCount = async () => {
-    const response = await fetch(`/api/room/${id}`);
-    const data = await response.json();
-    if (!data) return;
-    setUserCount(data.users?.length);
-  };
-
-  useEffect(() => {
-    if (!id) return;
-    const interval = setInterval(updateUserCount, 5000);
-    return () => clearInterval(interval);
-  }, [id]);
+  }, [id, currentTrackId, playing]);
 
   const handleProgress = () => {
     if (playerRef.current) {
@@ -184,11 +108,15 @@ export default function Player() {
 
   const updateCurrentTrack = useCallback(
     async (trackId, playStatus, resetTime = false) => {
+      if (!id) return;
       try {
         const currentTime =
           resetTime || !playerRef.current
             ? 0
             : playerRef.current.getCurrentTime();
+
+        console.log("房間ID:", id);
+        console.log("更新當前曲目:", { trackId, playStatus, currentTime });
 
         const response = await fetch(`/api/room/${id}/currentTrack`, {
           method: "POST",
@@ -197,15 +125,18 @@ export default function Player() {
             currentTrack: {
               id: trackId,
               playing: playStatus,
-              currentTime: currentTime,
+              currentTime,
+              lastUpdatedAt: Date.now(),
             },
             repeatMode,
           }),
         });
 
         if (!response.ok) {
-          throw new Error("無法更新當前歌曲");
+          throw new Error("無法更新當前曲目");
         }
+
+        console.log("成功更新當前曲目:", { trackId, playStatus });
       } catch (error) {
         console.error("更新當前曲目失敗:", error);
       }
@@ -229,7 +160,7 @@ export default function Player() {
     };
 
     const handleDragOver = (event) => {
-      event.preventDefault(); // 必須阻止預設行為，否則無法觸發 drop
+      event.preventDefault();
     };
 
     const handleDrop = (event, dropIndex) => {
@@ -238,14 +169,13 @@ export default function Player() {
         10
       );
 
-      // 如果拖拽目標和落下目標相同，則不執行任何操作
       if (draggedIndex === dropIndex) return;
 
       const updatedPlaylist = [...playlist];
-      const [draggedTrack] = updatedPlaylist.splice(draggedIndex, 1); // 移除拖動項
-      updatedPlaylist.splice(dropIndex, 0, draggedTrack); // 插入到新的位置
+      const [draggedTrack] = updatedPlaylist.splice(draggedIndex, 1);
+      updatedPlaylist.splice(dropIndex, 0, draggedTrack);
 
-      updatePlaylist(updatedPlaylist); // 更新播放清單
+      updatePlaylist(updatedPlaylist);
     };
 
     return (
@@ -335,7 +265,7 @@ export default function Player() {
         // 如果音軌相同，則重置播放進度
         if (track.url === audioSrc) playerRef.current.seekTo(0);
 
-        console.log(`已切換至音軌: ${track.title}`);
+        console.log(`已切換至曲目: ${track.title}`);
       }
     },
     [playlist, updateCurrentTrack, playerRef]
@@ -400,7 +330,7 @@ export default function Player() {
     }
   };
 
-  const loadSavedPlaylist = (playlistId) => {
+  const loadSavedPlaylist = async (playlistId) => {
     try {
       const savedPlaylist = savedPlaylists.find((pl) => pl.id === playlistId);
       if (!savedPlaylist) return;
@@ -553,74 +483,70 @@ export default function Player() {
   };
 
   const handleLinkSubmit = useCallback(async () => {
+    if (!inputValue) return;
     if (!ReactPlayer.canPlay(inputValue)) {
       alert(`無法播放此連結\n${inputValue}`);
       setInputValue("");
       return;
     }
 
-    if (localStorage.getItem("userName") === null) {
+    if (!localStorage.getItem("userName")) {
       const userName = prompt("請輸入你的使用者名稱:");
       if (userName) localStorage.setItem("userName", userName);
     }
 
-    try {
-      if (id) {
-        const roomResponse = await fetch(`/api/room/${id}`);
-        const newTrackData = await fetch(
-          `https://noembed.com/embed?dataType=json&url=${inputValue}`
-        ).then((res) => res.json());
-        const newTrackTitle = newTrackData.title || "未知歌曲";
-        const newTrackThumbnail = newTrackData.thumbnail_url || null;
-        const newTrack = {
-          id: uuidv4(),
-          url: inputValue,
-          title: newTrackTitle,
-          thumbnail: newTrackThumbnail,
-          addedBy:
-            localStorage.getItem("userName") ||
-            localStorage.getItem("userId").slice(0, 8),
-        };
-
-        if (roomResponse.ok) {
-          const newPlaylist = [...playlist, newTrack];
-          setPlaylist(newPlaylist);
-
-          await fetch(`/api/room/${id}/playlist`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ playlist: newPlaylist }),
-          });
-
-          if (playlist.length == 0) {
-            setAudioSrc(newTrack.url);
-            setPlaying(true);
-            setCurrentTrackId(newTrack.id);
-            updateCurrentTrack(newTrack.id, true);
-          }
-        } else {
-          const response = await fetch("/api/createRoom", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          });
-          const data = await response.json();
-          if (data.roomId) router.replace(`/player?id=${data.roomId}`);
-        }
-      } else {
+    if (!id) {
+      try {
         const response = await fetch("/api/createRoom", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
         const data = await response.json();
-        if (data.roomId) router.replace(`/player?id=${data.roomId}`);
+        if (data.roomId) {
+          router.push(`/player?id=${data.roomId}`);
+        } else {
+          throw new Error("Failed to create room");
+        }
+      } catch (error) {
+        console.error("創建房間失敗:", error);
+        return;
+      }
+    }
+
+    try {
+      const newTrackData = await fetch(
+        `https://noembed.com/embed?dataType=json&url=${inputValue}`
+      ).then((res) => res.json());
+      const newTrack = {
+        id: uuidv4(),
+        url: inputValue,
+        title: newTrackData.title || "未知歌曲",
+        thumbnail: newTrackData.thumbnail_url || null,
+        addedBy:
+          localStorage.getItem("userName") ||
+          localStorage.getItem("userId").slice(0, 8),
+      };
+
+      const newPlaylist = [...playlist, newTrack];
+      setPlaylist(newPlaylist);
+
+      await fetch(`/api/room/${id}/playlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlist: newPlaylist }),
+      });
+
+      if (playlist.length === 0) {
+        setAudioSrc(newTrack.url);
+        setPlaying(true);
+        setCurrentTrackId(newTrack.id);
       }
     } catch (error) {
       console.error("添加歌曲失敗:", error);
-      alert("添加歌曲時發生錯誤");
+    } finally {
+      setInputValue("");
     }
-
-    setInputValue("");
-  }, [id, inputValue, playlist, router, updateCurrentTrack]);
+  }, [id, inputValue, playlist]);
 
   const handleRemoveTrack = async (event, trackId) => {
     event.stopPropagation();
