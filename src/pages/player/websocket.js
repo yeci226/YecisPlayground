@@ -249,28 +249,28 @@ export default function Player() {
 
   // Render loading state
   if (isLoading) {
-    return <div>Loading room information...</div>;
+    return <div>正在載入房間資訊...</div>;
   }
 
   return (
     <div>
       <Head>
-        <title>WebSocket Player - Room {id}</title>
+        <title>網路插座播放器 - 房間 {id}</title>
       </Head>
 
       <div className={styles.contentContainer}>
-        <h1>Shared Player - Room {id}</h1>
+        <h1>網路插座播放器 - 房間 {id}</h1>
 
         <div className={styles.audioControls}>
           <input
             type="text"
-            placeholder="Enter song link"
+            placeholder="在這裡輸入連結"
             value={inputValue}
             className={inputValue ? styles.active : ""}
             onChange={(e) => setInputValue(e.target.value)}
           />
           <button className={styles.button} onClick={handleLinkSubmit}>
-            Add Song
+            添加到歌單
           </button>
         </div>
 
