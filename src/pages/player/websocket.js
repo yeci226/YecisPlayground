@@ -11,10 +11,14 @@ export default function Player() {
   const { id } = router.query;
   const socketRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
+  const [messageInput, setMessageInput] = useState("");
+  const [users, setUsers] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [playlist, setPlaylist] = useState([]);
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [savedPlaylists, setSavedPlaylists] = useState([]);
   const [playbackState, setPlaybackState] = useState({
     playing: false,
     volume: 0.1,
@@ -24,6 +28,25 @@ export default function Player() {
   const playerRef = useRef(null);
   const timePercentage = (currentTime / duration) * 100;
 
+  const deleteSavedPlaylist = (playlistId) => {
+    try {
+      const confirmed = window.confirm("確定要刪除這個播放清單嗎？");
+      if (confirmed) {
+        const updatedPlaylists = savedPlaylists.filter(
+          (pl) => pl.id !== playlistId
+        );
+        localStorage.setItem(
+          "savedPlaylists",
+          JSON.stringify(updatedPlaylists)
+        );
+        setSavedPlaylists(updatedPlaylists);
+      }
+    } catch (error) {
+      console.error("刪除播放清單時發生錯誤:", error);
+      alert("刪除播放清單失敗");
+    }
+  };
+
   // Memoize socket connection logic
   const connectWebSocket = useCallback(() => {
     if (!id) {
@@ -32,13 +55,18 @@ export default function Player() {
     }
 
     try {
-      const ws = new WebSocket(
-        "wss://9e03-2001-df2-45c1-18-00-1.ngrok-free.app"
-      );
+      const ws = new WebSocket("ws://localhost:4400");
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
-        ws.send(JSON.stringify({ type: "joinRoom", roomId: id }));
+        ws.send(
+          JSON.stringify({
+            type: "joinRoom",
+            roomId: id,
+            userName: localStorage.getItem("userName"),
+            userId: localStorage.getItem("userId"),
+          })
+        );
         setIsLoading(false);
       };
 
@@ -69,29 +97,106 @@ export default function Player() {
     }
   }, [id, router]);
 
+  // Send message to WebSocket server
+  const sendMessage = useCallback((type, payload) => {
+    if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type,
+          timestamp: new Date().toLocaleTimeString(),
+          ...payload,
+        })
+      );
+    }
+  }, []);
+
   // Handle different WebSocket message types
-  const handleWebSocketMessage = useCallback((data) => {
-    switch (data.type) {
-      case "roomState":
-        setPlaylist(data.playlist || []);
-        setCurrentTrack(data.currentTrack || null);
-        setPlaybackState((prev) => ({
-          ...prev,
-          playing: data.playing || false,
-          progress: data.currentTrack?.progress || 0,
-        }));
-        break;
-      case "updatePlaylist":
-        setPlaylist(data.playlist || []);
-        break;
-      case "updateTrack":
-        setCurrentTrack(data.currentTrack || null);
-        setPlaybackState((prev) => ({
-          ...prev,
-          playing: data.playing || false,
-          progress: data.currentTrack?.progress || 0,
-        }));
-        break;
+  const handleWebSocketMessage = useCallback(
+    (data) => {
+      switch (data.type) {
+        case "roomState":
+          setPlaylist(data.playlist || []);
+          setCurrentTrack(data.currentTrack || null);
+          setPlaybackState((prev) => ({
+            ...prev,
+            playing: data.playing || false,
+            progress: data.currentTrack?.progress || 0,
+          }));
+          setUsers(data.users || []);
+          break;
+        case "updatePlaylist":
+          setPlaylist(data.playlist || []);
+          break;
+        case "updateTrack":
+          setCurrentTrack(data.currentTrack || null);
+          setPlaybackState((prev) => ({
+            ...prev,
+            playing: data.playing || false,
+            progress: data.currentTrack?.progress || 0,
+          }));
+          break;
+
+        case "userJoined":
+          setUsers(data.users || []);
+          if (data.autoPlay && playlist.length > 0) {
+            setPlaybackState((prev) => ({ ...prev, playing: true }));
+            sendMessage("updateTrack", { playing: true });
+          }
+          break;
+
+        case "userLeft":
+          setUsers(data.users || []);
+          break;
+
+        case "logAction":
+          setLogs(data.logs || []);
+          break;
+
+        default:
+          console.error("Unknown WebSocket message type:", data.type);
+      }
+    },
+    [playlist, sendMessage]
+  );
+
+  // 儲存歌單
+  const savePlaylist = () => {
+    try {
+      const playlistName = prompt("請輸入播放清單名稱:");
+      if (!playlistName) return;
+      if (playlistName.length > 16) {
+        alert("播放清單名稱不得超過16個字元");
+        return;
+      }
+
+      const savedList = {
+        id: uuidv4(),
+        name: playlistName,
+        tracks: playlist,
+        createdAt: new Date().toISOString(),
+        addedBy:
+          localStorage.getItem("userName") ||
+          localStorage.getItem("userId").slice(0, 8),
+      };
+
+      const existingPlaylists = JSON.parse(
+        localStorage.getItem("savedPlaylists") || "[]"
+      );
+      const updatedPlaylists = [...existingPlaylists, savedList];
+
+      localStorage.setItem("savedPlaylists", JSON.stringify(updatedPlaylists));
+      setSavedPlaylists(updatedPlaylists);
+      alert(`播放清單 "${playlistName}" 已儲存`);
+    } catch (error) {
+      console.error("儲存播放清單時發生錯誤:", error);
+      alert("儲存播放清單失敗");
+    }
+  };
+
+  useEffect(() => {
+    const storedPlaylists = localStorage.getItem("savedPlaylists");
+    if (storedPlaylists) {
+      setSavedPlaylists(JSON.parse(storedPlaylists));
     }
   }, []);
 
@@ -117,19 +222,35 @@ export default function Player() {
     }
   }, [router.isReady, connectWebSocket]);
 
-  // Send message to WebSocket server
-  const sendMessage = useCallback((type, payload) => {
-    if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type, ...payload }));
-    }
-  }, []);
-
   const handleRemoveTrack = useCallback(async (event, trackId) => {
     event.stopPropagation();
+    const trackName = playlist.find((track) => track.id === trackId)?.title;
     const updatedPlaylist = playlist.filter((track) => track.id !== trackId);
     setPlaylist(updatedPlaylist);
-    sendMessage("updatePlaylist", { playlist: updatedPlaylist });
+    sendMessage("updatePlaylist", {
+      messageType: "",
+      trackName,
+      playlist: updatedPlaylist,
+    });
   });
+
+  const handleSendMessage = () => {
+    if (messageInput.trim()) {
+      sendMessage("messageAction", {
+        timestamp: new Date().toLocaleTimeString(),
+        message: messageInput,
+      });
+      setMessageInput("");
+    }
+  };
+
+  // 監聽 Enter 鍵
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault(); // 防止換行
+      handleSendMessage(); // 發送訊息
+    }
+  };
 
   // Add new track to playlist
   const handleLinkSubmit = useCallback(async () => {
@@ -143,7 +264,7 @@ export default function Player() {
       const newTrack = {
         id: Date.now().toString(),
         url: inputValue,
-        title: newTrackData.title || `Track ${playlist.length + 1}`,
+        title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
         thumbnail: newTrackData.thumbnail_url || null,
         addedBy:
           localStorage.getItem("userName") ||
@@ -152,7 +273,11 @@ export default function Player() {
 
       const updatedPlaylist = [...playlist, newTrack];
       setPlaylist(updatedPlaylist);
-      sendMessage("updatePlaylist", { playlist: updatedPlaylist });
+      sendMessage("updatePlaylist", {
+        messageType: "addTrack",
+        trackName: newTrack.title,
+        playlist: updatedPlaylist,
+      });
 
       if (playlist.length == 0) {
         setCurrentTrack(newTrack);
@@ -183,6 +308,7 @@ export default function Player() {
         setCurrentTrack(track);
         setPlaybackState((prev) => ({ ...prev, playing: true }));
         sendMessage("updateTrack", {
+          messageType: "changeTrack",
           currentTrack: { ...track, progress: 0 },
           playing: true,
         });
@@ -197,6 +323,7 @@ export default function Player() {
       setPlaybackState((prev) => ({ ...prev, progress: played }));
       const newPlayingState = !playbackState.playing;
       sendMessage("updateTrack", {
+        messageType: "pauseTrack",
         currentTrack: {
           ...currentTrack,
           progress: played || 0,
@@ -246,6 +373,78 @@ export default function Player() {
       });
     }
   });
+
+  const loadSavedPlaylist = (playlistId) => {
+    try {
+      // 取得保存的播放清單
+      const savedPlaylists = JSON.parse(
+        localStorage.getItem("savedPlaylists") || "[]"
+      );
+      const selectedPlaylist = savedPlaylists.find(
+        (pl) => pl.id === playlistId
+      );
+
+      if (!selectedPlaylist) {
+        alert(`播放清單 ID: ${playlistId} 未找到！`);
+        return;
+      }
+
+      if (!selectedPlaylist.tracks || selectedPlaylist.tracks.length === 0) {
+        alert(`播放清單 "${selectedPlaylist.name}" 沒有歌曲！`);
+        return;
+      }
+
+      const handleInsertPlaylist = (newTracks) => {
+        const updatedPlaylist = [...playlist, ...newTracks];
+        setPlaylist(updatedPlaylist);
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: selectedPlaylist.name,
+          playlistLength: selectedPlaylist.tracks.length,
+          playlist: updatedPlaylist,
+        });
+      };
+
+      if (playlist.length == 0) {
+        // 當前播放清單為空，直接載入
+        const firstTrack = selectedPlaylist.tracks[0];
+        setCurrentTrack(firstTrack);
+        setPlaybackState((prev) => ({ ...prev, playing: true }));
+        setPlaylist(selectedPlaylist.tracks);
+        sendMessage("updateTrack", {
+          messageType: "addTrack",
+          currentTrack: { ...firstTrack, progress: 0 },
+          playing: true,
+        });
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: selectedPlaylist.name,
+          playlistLength: selectedPlaylist.tracks.length,
+          playlist: selectedPlaylist.tracks,
+        });
+      } else {
+        // 當前播放清單非空，要求確認插入
+        const confirmed = confirm("當前播放清單將新增此播放清單，是否繼續？");
+        if (confirmed) handleInsertPlaylist(selectedPlaylist.tracks);
+      }
+    } catch (error) {
+      console.error("載入播放清單時發生錯誤:", error);
+      alert("載入播放清單失敗，請稍後重試！");
+    }
+  };
+
+  const clearPlaylist = () => {
+    const confirmed = window.confirm("確定要清空播放清單嗎？");
+    if (confirmed) {
+      setPlaylist([]);
+      setCurrentTrack(null);
+      setPlaybackState((prev) => ({ ...prev, playing: false }));
+      sendMessage("updatePlaylist", {
+        messageType: "clearPlaylist",
+        playlist: [],
+      });
+    }
+  };
 
   // Render loading state
   if (isLoading) {
@@ -303,7 +502,7 @@ export default function Player() {
                     color: "#F95454",
                     height: "min-content",
                   }}
-                  onClick={() => setPlaylist([])}
+                  onClick={clearPlaylist}
                 >
                   清空歌單
                 </button>
@@ -417,6 +616,13 @@ export default function Player() {
               <div className={styles.controlPanel}>
                 <button
                   className={styles.button}
+                  onClick={savePlaylist}
+                  title="儲存當前播放清單"
+                >
+                  儲存清單
+                </button>
+                <button
+                  className={styles.button}
                   onClick={togglePlayPause}
                   title={playbackState.playing ? "暫停" : "播放"}
                 >
@@ -445,6 +651,76 @@ export default function Player() {
                   }}
                 />
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.infoContainer}>
+          {users.length > 0 && (
+            <>
+              <div className={styles.usersContainer}>
+                <ul>
+                  {users.map((user) => (
+                    <li key={user.userId}>{user.userName || user.userId}</li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
+        <div
+          className={styles.audioControls}
+          style={{ display: "flex", gap: "10vw", flexDirection: "row" }}
+        >
+          {logs.length > 0 && (
+            <div className={styles.loggerContainer}>
+              <a>房間日誌</a>
+              <ul>
+                {logs
+                  .slice(0)
+                  .reverse()
+                  .filter((_, index) => index < 5)
+                  .map((log, index) => (
+                    <li key={index}>
+                      <span className={styles.logTime}>{log.timestamp}</span>{" "}
+                      <span className={styles.logMessage}>{log.message}</span>
+                    </li>
+                  ))}
+              </ul>
+              <input
+                style={{
+                  fontSize: "1rem",
+                }}
+                type="text"
+                placeholder="在這裡輸入訊息"
+                className={styles.messageInput}
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+          )}
+          {savedPlaylists.length > 0 && (
+            <div className={styles.savedPlaylistsContainer}>
+              <a>已儲存的播放清單 (點擊以載入)</a>
+              {savedPlaylists.map((pl) => (
+                <div key={pl.id} className={styles.savedPlaylistItem}>
+                  <span
+                    className={styles.button}
+                    onClick={() => loadSavedPlaylist(pl.id)}
+                  >
+                    {pl.name} - {pl.tracks.length}首單曲 (建立於:{" "}
+                    {new Date(pl.createdAt).toLocaleString()})
+                  </span>
+                  <button
+                    className={styles.button}
+                    style={{ outlineColor: "#F95454", color: "#F95454" }}
+                    onClick={() => deleteSavedPlaylist(pl.id)}
+                  >
+                    刪除
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -33,6 +33,82 @@
   transition: opacity 0.5s ease; /* 平滑過渡 */
 }
 
+.infoContainer {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+}
+
+.usersContainer {
+  position: relative;
+  bottom: 0;
+  left: 0;
+  padding: 10px;
+  margin: 10px;
+  border-radius: 10px;
+  background-color: var(--bc);
+  width: fit-content;
+  max-width: 200px;
+  max-height: 100px;
+  overflow-y: auto;
+  text-align: left; /* 文字靠左 */
+  scrollbar-width: thin; 
+  scrollbar-color: #888 transparent;
+  color: var(--fallback-bc);
+}
+
+.usersContainer ul {
+  padding: 0;
+  margin: 0;
+  list-style-position: inside;
+}
+
+.usersContainer ul li {
+  color: #86ab89;
+}
+
+.loggerContainer {
+  position: relative;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 10px;
+  padding: 20px;
+  border-radius: 10px;
+  outline: 2px solid var(--fallback-bc);
+  max-height: 300px; /* 設置最大高度 */
+  min-width: 300px;
+  max-width: 500px;
+  text-align: left; /* 文字靠左 */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.loggerContainer ul {
+  list-style: none; /* 移除項目符號 */
+  padding: 0;
+  margin: 0;
+}
+
+.loggerContainer li {
+  margin: 5px 0; 
+  font-size: 14px; 
+}
+
+.logTime {
+  color: gray;
+  font-size: 12px;
+  margin-right: 5px; 
+}
+
+.logMessage {
+  font-size: 14px;
+  color: var(--fallback-bc); 
+}
+
 .savedPlaylistsContainer {
   display: flex;
   flex-direction: column;
@@ -53,6 +129,20 @@
   border-radius: 10px;
   background-color: var(--bc);
   margin-top: 10px;
+}
+
+.messageInput {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: none;
+  border: none;
+  color: var(--fallback-bc);
+  outline: none;
+  font-size: 0.6rem;
+  font-family: "YinPing", sans-serif;
+  width: 100%;
+  background: var(--fallback-bg)
 }
 
 .audioControls input {
@@ -224,7 +314,8 @@
   padding: 20px;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
-  overflow-y: auto;
+  overflow-y: scroll;
+  max-height: 50vh;
 }
 
 .playlistContainer h1 {
