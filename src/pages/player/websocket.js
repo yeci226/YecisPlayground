@@ -55,7 +55,9 @@ export default function Player() {
     }
 
     try {
-      const ws = new WebSocket("ws://localhost:4400");
+      const ws = new WebSocket(
+        "wss://9e03-2001-df2-45c1-18-00-1.ngrok-free.app"
+      );
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
