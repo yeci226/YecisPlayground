@@ -655,7 +655,6 @@ export default function Player() {
                                 />
                               )}
                               <span>{track.title}</span>
-                              <span className={styles.dragHandle}>⋮</span>
                             </li>
                           )}
                         </Draggable>
