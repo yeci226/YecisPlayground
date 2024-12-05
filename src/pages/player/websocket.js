@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import styles from "../../public/css/Player.module.css";
 import { v4 as uuidv4 } from "uuid";
 import ReactPlayer from "react-player";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 export default function Player() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function Player() {
   const [playlist, setPlaylist] = useState([]);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [savedPlaylists, setSavedPlaylists] = useState([]);
+  const [immersiveMode, setImmersiveMode] = useState(false);
   const [playbackState, setPlaybackState] = useState({
     playing: false,
     volume: 0.1,
@@ -55,9 +57,7 @@ export default function Player() {
     }
 
     try {
-      const ws = new WebSocket(
-        "wss://9e03-2001-df2-45c1-18-00-1.ngrok-free.app"
-      );
+      const ws = new WebSocket("ws://localhost:4400");
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
@@ -65,6 +65,7 @@ export default function Player() {
           JSON.stringify({
             type: "joinRoom",
             roomId: id,
+            timestamp: new Date().toLocaleTimeString(),
             userName: localStorage.getItem("userName"),
             userId: localStorage.getItem("userId"),
           })
@@ -99,6 +100,10 @@ export default function Player() {
     }
   }, [id, router]);
 
+  const toggleImmersiveMode = () => {
+    setImmersiveMode(!immersiveMode);
+  };
+
   // Send message to WebSocket server
   const sendMessage = useCallback((type, payload) => {
     if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
@@ -125,6 +130,22 @@ export default function Player() {
             progress: data.currentTrack?.progress || 0,
           }));
           setUsers(data.users || []);
+
+          // if (
+          //   data.playing &&
+          //   data.currentTrack &&
+          //   data.currentTrack.progress > 0
+          // ) {
+          //   console.log("Resuming playback...");
+          //   const currentTrack = data.currentTrack;
+          //   const newProgress = data.currentTrack.progress;
+          //   console.log("New progress:", newProgress);
+          //   setCurrentTrack(currentTrack);
+          //   setPlaybackState((prev) => ({ ...prev, progress: newProgress }));
+          //   if (playerRef.current) {
+          //     playerRef.current.seekTo(newProgress, "fraction");
+          //   }
+          // }
           break;
         case "updatePlaylist":
           setPlaylist(data.playlist || []);
@@ -160,6 +181,23 @@ export default function Player() {
     },
     [playlist, sendMessage]
   );
+
+  // 更新播放順序的函數
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const reorderedPlaylist = Array.from(playlist);
+    const [movedItem] = reorderedPlaylist.splice(result.source.index, 1);
+    reorderedPlaylist.splice(result.destination.index, 0, movedItem);
+
+    setPlaylist(reorderedPlaylist);
+    sendMessage("updatePlaylist", {
+      messageType: "changeTrack",
+      movedItem: movedItem.title,
+      moveTo: result.destination.index + 1,
+      playlist: reorderedPlaylist,
+    });
+  };
 
   // 儲存歌單
   const savePlaylist = () => {
@@ -257,6 +295,11 @@ export default function Player() {
   // Add new track to playlist
   const handleLinkSubmit = useCallback(async () => {
     if (!inputValue) return;
+    if (!ReactPlayer.canPlay(inputValue)) {
+      alert(`無法播放此連結\n${inputValue}`);
+      setInputValue("");
+      return;
+    }
 
     try {
       const newTrackData = await fetch(
@@ -320,52 +363,44 @@ export default function Player() {
   );
 
   // Toggle play/pause
-  const togglePlayPause = useCallback(
-    ({ played }) => {
-      setPlaybackState((prev) => ({ ...prev, progress: played }));
-      const newPlayingState = !playbackState.playing;
-      sendMessage("updateTrack", {
-        messageType: "pauseTrack",
-        currentTrack: {
-          ...currentTrack,
-          progress: played || 0,
-        },
-        playing: newPlayingState,
-      });
-    },
-    [currentTrack, sendMessage, playbackState.playing]
-  );
+  const togglePlayPause = () => {
+    const newPlayingState = !playbackState.playing;
+    sendMessage("updateTrack", {
+      messageType: "pauseTrack",
+      currentTrack: {
+        ...currentTrack,
+        progress: currentTrack.progress,
+      },
+      playing: newPlayingState,
+    });
+  };
 
   // Handle playback progress
-  const handleProgress = useCallback(
-    ({ played }) => {
-      setPlaybackState((prev) => ({ ...prev, progress: played }));
-      if (playerRef) {
-        const time = playerRef.current.getCurrentTime();
-        const duration = playerRef.current.getDuration();
-        setCurrentTime(time || 0);
-        setDuration(duration || 0);
-      }
+  const handleProgress = () => {
+    if (playerRef.current) {
+      const time = playerRef.current.getCurrentTime();
+      const duration = playerRef.current.getDuration();
+      setCurrentTime(time || 0);
+      setDuration(duration || 0);
+    }
 
-      sendMessage("updateCurrentTrack", {
-        currentTrack: {
-          id: currentTrack?.id,
-          progress: played,
-        },
-        playing: playbackState.playing,
-      });
-    },
-    [currentTrack, sendMessage, playbackState.playing]
-  );
+    if (playbackState.playing && currentTrack) {
+      const newProgress = currentTime;
+      setPlaybackState((prev) => ({ ...prev, progress: newProgress }));
+
+      // sendMessage("updateCurrentTrack", {
+      //   currentTrack: { ...currentTrack, progress: newProgress },
+      //   playing: true,
+      // });
+    }
+  };
 
   const playNextTrack = useCallback(() => {
     if (!playlist || playlist.length === 0) return;
     const currentTrackIndex = playlist.findIndex(
       (track) => track.id === currentTrack.id
     );
-
-    let nextTrack = playlist[currentTrackIndex + 1] || playlist[0];
-
+    const nextTrack = playlist[(currentTrackIndex + 1) % playlist.length];
     if (nextTrack) {
       setCurrentTrack(nextTrack);
       setPlaybackState((prev) => ({ ...prev, progress: 0 }));
@@ -459,27 +494,35 @@ export default function Player() {
         <title>網路插座播放器 - 房間 {id}</title>
       </Head>
 
-      <div className={styles.contentContainer}>
-        <h1>網路插座播放器 - 房間 {id}</h1>
+      <div
+        className={`${styles.contentContainer} ${
+          immersiveMode ? styles.immersive : ""
+        }`}
+      >
+        {!immersiveMode && (
+          <>
+            <h1>網路插座播放器 - 房間 {id}</h1>
 
-        <div className={styles.audioControls}>
-          <input
-            type="text"
-            placeholder="在這裡輸入連結"
-            value={inputValue}
-            className={inputValue ? styles.active : ""}
-            onChange={(e) => setInputValue(e.target.value)}
-          />
-          <button className={styles.button} onClick={handleLinkSubmit}>
-            添加到歌單
-          </button>
-        </div>
+            <div className={styles.audioControls}>
+              <input
+                type="text"
+                placeholder="在這裡輸入連結"
+                value={inputValue}
+                className={inputValue ? styles.active : ""}
+                onChange={(e) => setInputValue(e.target.value)}
+              />
+              <button className={styles.button} onClick={handleLinkSubmit}>
+                添加到歌單
+              </button>
+            </div>
+          </>
+        )}
 
         <div
           className={styles.audioControls}
           style={{ display: "flex", gap: "10vw", flexDirection: "row" }}
         >
-          {playlist?.length > 0 && (
+          {playlist?.length > 0 && !immersiveMode && (
             <div className={styles.playlistContainer}>
               <div
                 style={{
@@ -509,80 +552,92 @@ export default function Player() {
                   清空歌單
                 </button>
               </div>
-              <ul>
-                {playlist.map((track) => (
-                  <li
-                    key={track.id}
-                    onClick={() => handleTrackChange(track.id)}
-                    className={`${styles.trackElement} ${
-                      track.id === currentTrack.id
-                        ? styles.active
-                        : styles.inactive
-                    }`}
-                    style={{
-                      position: "relative",
-                      color: track.id === currentTrack.id ? "#86AB89" : "grey",
-                      cursor:
-                        track.id === currentTrack.id ? "default" : "pointer",
-                    }}
-                  >
-                    <>
-                      {track.id === currentTrack.id ? (
-                        <button
-                          className={styles.removeButton}
-                          style={{ cursor: "default" }}
-                        >
-                          🎵
-                        </button>
-                      ) : (
-                        <button
-                          className={styles.removeButton}
-                          onClick={(event) =>
-                            handleRemoveTrack(event, track.id)
-                          }
-                        >
-                          ❌
-                        </button>
-                      )}
-                    </>
-                    {track.thumbnail && (
-                      <img
-                        src={track.thumbnail}
-                        alt={track.title}
-                        className={styles.thumbnail}
-                      />
-                    )}
-                    <span
-                      style={{
-                        marginRight: "5px",
-                        overflow: "hidden",
-                      }}
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="playlist">
+                  {(provided) => (
+                    <ul
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      style={{ listStyleType: "none", padding: 0 }}
                     >
-                      {track.title}
-                    </span>
-                    <span className={styles.addedBy}>
-                      Added by: {track.addedBy}
-                    </span>
-                    <span
-                      className={styles.dragHandle}
-                      style={{
-                        cursor: "grab",
-                        userSelect: "none",
-                        color: "grey",
-                        fontSize: "1.2rem",
-                        marginLeft: "auto",
-                      }}
-                    >
-                      ⋮
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                      {playlist.map((track, index) => (
+                        <Draggable
+                          key={track.id}
+                          draggableId={track.id}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <li
+                              key={track.id}
+                              onClick={() => handleTrackChange(track.id)}
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`${styles.trackElement} ${
+                                track.id === currentTrack.id
+                                  ? styles.active
+                                  : styles.inactive
+                              }`}
+                              style={{
+                                ...provided.draggableProps.style,
+                                position: "relative",
+                                color:
+                                  track.id === currentTrack.id
+                                    ? "#86AB89"
+                                    : "grey",
+                                cursor:
+                                  track.id === currentTrack.id
+                                    ? "default"
+                                    : "pointer",
+                              }}
+                            >
+                              <>
+                                {track.id === currentTrack.id ? (
+                                  <button
+                                    className={styles.removeButton}
+                                    style={{ cursor: "default" }}
+                                  >
+                                    🎵
+                                  </button>
+                                ) : (
+                                  <button
+                                    className={styles.removeButton}
+                                    onClick={(event) =>
+                                      handleRemoveTrack(event, track.id)
+                                    }
+                                  >
+                                    ❌
+                                  </button>
+                                )}
+                              </>
+                              {track.thumbnail && (
+                                <img
+                                  src={track.thumbnail}
+                                  alt={track.title}
+                                  className={styles.thumbnail}
+                                />
+                              )}
+                              <span>{track.title}</span>
+                              <span className={styles.dragHandle}>⋮</span>
+                            </li>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </ul>
+                  )}
+                </Droppable>
+              </DragDropContext>
             </div>
           )}
 
           {currentTrack && playlist.length > 0 && (
-            <div className={styles.playerContainer}>
+            <div
+              className={`${styles.playerContainer} ${
+                immersiveMode ? styles.huge : ""
+              }`}
+              style={immersiveMode ? { display: "block" } : {}}
+            >
               <ReactPlayer
                 ref={playerRef}
                 url={currentTrack.url}
@@ -595,11 +650,30 @@ export default function Player() {
                 height="100%"
                 progressInterval={500}
               />
+
               <div className={styles.trackInfo}>
-                {playlist.find((track) => track.id == currentTrack.id)?.title}
+                {immersiveMode &&
+                  `#${
+                    playlist.findIndex(
+                      (track) => track.id == currentTrack?.id
+                    ) + 1
+                  } - `}
+                {playlist.find((track) => track.id == currentTrack?.id)?.title}
               </div>
 
               <div className={styles.progressContainer}>
+                <div className={styles.timeDisplay}>
+                  {immersiveMode ? (
+                    <span>
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </span>
+                  ) : (
+                    <>
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </>
+                  )}
+                </div>
                 <input
                   className={styles.progressBar}
                   type="range"
@@ -609,31 +683,44 @@ export default function Player() {
                   disabled={true}
                   style={{ "--value": `${timePercentage}%` }}
                 />
-                <div className={styles.timeDisplay}>
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
               </div>
 
               <div className={styles.controlPanel}>
-                <button
-                  className={styles.button}
-                  onClick={savePlaylist}
-                  title="儲存當前播放清單"
-                >
-                  儲存清單
+                <button className={styles.button} onClick={toggleImmersiveMode}>
+                  {immersiveMode ? "返回" : "放大"}
                 </button>
-                <button
-                  className={styles.button}
-                  onClick={togglePlayPause}
-                  title={playbackState.playing ? "暫停" : "播放"}
-                >
-                  {playbackState.playing ? "暫停" : "播放"}
-                </button>
+                {!immersiveMode && (
+                  <>
+                    <button
+                      className={styles.button}
+                      onClick={savePlaylist}
+                      title="儲存當前播放清單"
+                    >
+                      儲存清單
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={togglePlayPause}
+                      title={playbackState.playing ? "暫停" : "播放"}
+                    >
+                      {playbackState.playing ? "暫停" : "播放"}
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={playNextTrack}
+                      title="播放下一首"
+                    >
+                      下一首
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className={styles.volumeControl}>
-                <p>音量：{Math.round(playbackState.volume * 100)}%</p>
+                <p>
+                  {!immersiveMode ? "音量：" : ""}
+                  {Math.round(playbackState.volume * 100)}%
+                </p>
                 <input
                   className={styles.progressBar}
                   type="range"
@@ -674,7 +761,7 @@ export default function Player() {
           className={styles.audioControls}
           style={{ display: "flex", gap: "10vw", flexDirection: "row" }}
         >
-          {logs.length > 0 && (
+          {logs.length > 0 && !immersiveMode && (
             <div className={styles.loggerContainer}>
               <a>房間日誌</a>
               <ul>
@@ -702,7 +789,7 @@ export default function Player() {
               />
             </div>
           )}
-          {savedPlaylists.length > 0 && (
+          {savedPlaylists.length > 0 && !immersiveMode && (
             <div className={styles.savedPlaylistsContainer}>
               <a>已儲存的播放清單 (點擊以載入)</a>
               {savedPlaylists.map((pl) => (

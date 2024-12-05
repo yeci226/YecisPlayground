@@ -75,7 +75,7 @@ const Header = () => {
           <NavLink to="/zzz/signal-log">調頻紀錄</NavLink>
         </div>
       </div>
-      <NavLink to="/player">播放器</NavLink>
+      <NavLink to="/player/websocket">播放器</NavLink>
     </header>
   );
 };

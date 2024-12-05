@@ -91,6 +91,7 @@
   list-style: none; /* 移除項目符號 */
   padding: 0;
   margin: 0;
+  text-align: left; /* 文字靠左 */
 }
 
 .loggerContainer li {
@@ -132,17 +133,13 @@
 }
 
 .messageInput {
-  position: absolute;
   bottom: 0;
   left: 0;
-  background: none;
-  border: none;
   color: var(--fallback-bc);
-  outline: none;
   font-size: 0.6rem;
   font-family: "YinPing", sans-serif;
   width: 100%;
-  background: var(--fallback-bg)
+  background: var(--fallback-bg);
 }
 
 .audioControls input {
@@ -196,6 +193,15 @@
   transform: scale(1.1);
 }
 
+.immersive {
+  background-color: var(--fallback-bg);
+  color: var(--fallback-bc);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .playerContainer {
   display: flex;
   flex-direction: column;
@@ -208,13 +214,142 @@
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
   max-width: 100vw;
+
+  /* 固定寬高或設置比例 */
+  width: 640px; /* 固定寬度 */
+  height: 645px; /* 固定高度 */
+  aspect-ratio: 16 / 9; /* 或者使用比例布局 */
 }
 
-.playerContainer iframe {
-  width: 100%; /* 寬度填滿父容器 */
-  height: auto; /* 高度自動 */
-  aspect-ratio: 16 / 9; /* 設定 16:9 的比例 */
+.placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+
+/* 置中物件 */
+.huge {
+  position: relative; /* 為子元素提供定位基準 */
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  padding: 0;
+  margin: 0 auto;
+  width: 80vw;
+  height: 90vh;
+  outline: none;
+  aspect-ratio: 16 / 9;
+}
+
+.huge iframe {
+  width: 100%;
+  height: 100%;
   border: none;
+  border-radius: 5px;
+}
+
+.huge .trackInfo {
+  position: absolute; /* 絕對定位 */
+  top: 10px; /* 緊貼 iframe 頂部 */
+  left: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  flex-wrap: wrap;
+  font-size: 1.5rem;
+  z-index: 10;
+  color: #FFFFFF;
+  text-shadow: 1px 1px 2px #000000;
+}
+
+.huge .progressContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: absolute; /* 絕對定位 */
+  bottom: 5px; /* 緊貼 iframe 底部 */
+  margin: 0;
+  padding: 0 5% 0 5%;
+  width: 90%; /* 進度條寬度 */
+  z-index: 10; /* 確保在 iframe 上層 */
+}
+
+.huge .volumeControl {
+  position: relative;
+  display: flex;
+  justify-content: left;
+  bottom: 10%;
+  left: 0;
+  z-index: 10;
+  margin-left: 5%;
+  padding: 0;
+  width: 30%;
+  color: #FFFFFF;
+  text-shadow: 1px 1px 2px #000000;
+}
+
+.huge .controlPanel {
+  position: absolute; /* 絕對定位 */
+  bottom: 0;
+  right: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  gap: 10px;
+  z-index: 10;
+}
+
+.huge .controlPanel .button {
+  outline: none;
+  color: #FFFFFF;
+  text-shadow: 1px 1px 2px #000000;
+}
+
+.huge .timeDisplay {
+  display: flex;
+  justify-content: left;
+  width: max-content;
+  margin-top: 5px;
+  font-size: 1.5rem;
+  color: #FFFFFF;
+  text-shadow: 1px 1px 2px #000000;
+}
+
+.huge .progressBar::-webkit-slider-thumb {
+  margin-top: -10px;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: #76c7c0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.huge .progressBar::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 5px;
+  background: linear-gradient(
+    to right,
+    #76c7c0 0%,
+    #76c7c0 var(--value),
+    #e0e0e0 var(--value),
+    #e0e0e0 100%
+  ); /* 使用渐变来表示已滑过部分 */
+}
+
+
+.playerContainer iframe {
+  width: 100%; /* 填滿容器寬度 */
+  height: 100%; /* 填滿容器高度 */
+  aspect-ratio: 16 / 9; /* 16:9 比例 */
+  border: none; /* 移除邊框 */
   border-radius: 5px;
   pointer-events: none !important;
 }
@@ -229,6 +364,7 @@
   z-index: -1;
 }
 
+
 .trackInfo {
   display: flex;
   justify-content: center;
@@ -236,6 +372,7 @@
   text-align: center;
   margin-top: 30px;
   flex-wrap: wrap;
+  user-select: text;
 }
 
 .progressContainer {
