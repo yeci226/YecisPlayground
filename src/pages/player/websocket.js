@@ -302,35 +302,72 @@ export default function Player() {
     }
 
     try {
-      const newTrackData = await fetch(
-        `https://noembed.com/embed?dataType=json&url=${inputValue}`
-      ).then((res) => res.json());
+      if (inputValue.includes("playlist?")) {
+        const response = await fetch(`/api/playlist?url=${inputValue}`);
+        const playlistData = await response.json();
 
-      const newTrack = {
-        id: Date.now().toString(),
-        url: inputValue,
-        title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
-        thumbnail: newTrackData.thumbnail_url || null,
-        addedBy:
-          localStorage.getItem("userName") ||
-          localStorage.getItem("userId").slice(0, 8),
-      };
+        const newTracks = playlistData.songs.map((item, index) => ({
+          id: `${Date.now().toString()}${index}`,
+          url: item.url,
+          title: item.title,
+          thumbnail: item.thumbnail,
+          addedBy:
+            localStorage.getItem("userName") ||
+            localStorage.getItem("userId").slice(0, 8),
+        }));
 
-      const updatedPlaylist = [...playlist, newTrack];
-      setPlaylist(updatedPlaylist);
-      sendMessage("updatePlaylist", {
-        messageType: "addTrack",
-        trackName: newTrack.title,
-        playlist: updatedPlaylist,
-      });
+        const updatedPlaylist = [...playlist, ...newTracks];
+        setPlaylist(updatedPlaylist);
 
-      if (playlist.length == 0) {
-        setCurrentTrack(newTrack);
-        setPlaybackState((prev) => ({ ...prev, playing: true }));
-        sendMessage("updateTrack", {
-          currentTrack: { ...newTrack, progress: 0 },
-          playing: true,
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: playlistData.name,
+          playlistLength: playlistData.songs.length,
+          playlist: updatedPlaylist,
         });
+
+        if (playlist.length == 0) {
+          const firstTrack = newTracks[0];
+          console.log("First track:", firstTrack);
+          setCurrentTrack(firstTrack);
+          setPlaybackState((prev) => ({ ...prev, playing: true }));
+          sendMessage("updateTrack", {
+            messageType: "addTrack",
+            currentTrack: { ...firstTrack, progress: 0 },
+            playing: true,
+          });
+        }
+      } else {
+        const newTrackData = await fetch(
+          `https://noembed.com/embed?dataType=json&url=${inputValue}`
+        ).then((res) => res.json());
+
+        const newTrack = {
+          id: Date.now().toString(),
+          url: inputValue,
+          title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
+          thumbnail: newTrackData.thumbnail_url || null,
+          addedBy:
+            localStorage.getItem("userName") ||
+            localStorage.getItem("userId").slice(0, 8),
+        };
+
+        const updatedPlaylist = [...playlist, newTrack];
+        setPlaylist(updatedPlaylist);
+        sendMessage("updatePlaylist", {
+          messageType: "addTrack",
+          trackName: newTrack.title,
+          playlist: updatedPlaylist,
+        });
+
+        if (playlist.length == 0) {
+          setCurrentTrack(newTrack);
+          setPlaybackState((prev) => ({ ...prev, playing: true }));
+          sendMessage("updateTrack", {
+            currentTrack: { ...newTrack, progress: 0 },
+            playing: true,
+          });
+        }
       }
 
       setInputValue("");
