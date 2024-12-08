@@ -56,6 +56,7 @@ const Footer = () => {
           alignItems: "center",
           color: currentTheme.textColor,
           zIndex: 1000,
+          userSelect: "none",
         }}
       >
         <span>nerds</span>

@@ -1,0 +1,57 @@
+.joinLeaveMessage {
+    animation: fadeUp 3s ease-in-out;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;    
+    font-size: 14px;
+    border-radius: 10px;
+    font-family: "YinPing", sans-serif;
+}
+
+.messageInput {
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: var(--fallback-bc);
+    font-size: 1rem;
+    margin-right: 10px;
+    outline: none;
+    padding: 10px;
+    font-family: "YinPing", sans-serif;
+}
+
+.messageInput input.active {
+    outline: 2px solid #86ab89;
+}
+  
+.messageInput input:focus {
+    outline: 2px solid #86ab89;
+}
+  
+.messageInput input:not(:placeholder-shown):focus {
+    outline: 2px solid #86ab89;
+}
+  
+.messageInput input:focus:not(:placeholder-shown) {
+    outline: 2px solid #86ab89;
+}
+  
+.messageInput input::placeholder {
+    user-select: none;
+}
+
+@keyframes fadeUp {
+    0% {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+}

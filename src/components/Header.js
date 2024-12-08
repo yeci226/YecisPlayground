@@ -76,6 +76,7 @@ const Header = () => {
         </div>
       </div>
       <NavLink to="/player/websocket">播放器</NavLink>
+      <NavLink to="/backroom">後室</NavLink>
     </header>
   );
 };
