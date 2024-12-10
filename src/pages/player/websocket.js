@@ -21,6 +21,7 @@ export default function Player() {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [savedPlaylists, setSavedPlaylists] = useState([]);
   const [immersiveMode, setImmersiveMode] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
   const [playbackState, setPlaybackState] = useState({
     playing: false,
     volume: 0.1,
@@ -29,6 +30,37 @@ export default function Player() {
   });
   const playerRef = useRef(null);
   const timePercentage = (currentTime / duration) * 100;
+
+  const getRecommendedTracks = async (trackUrl) => {
+    try {
+      const response = await fetch(`/api/getInfo?url=${trackUrl}`);
+      const recommendation = await response.json();
+
+      // 過濾重複的歌曲
+      const uniqueRecommendations = recommendation.filter(
+        (track) => !playlist.some((plTrack) => plTrack.id === track.id)
+      );
+
+      return uniqueRecommendations;
+    } catch (error) {
+      console.error("獲取推薦歌曲失敗：", error);
+      return [];
+    }
+  };
+
+  const handleSetAutoPlay = () => {
+    const newAutoPlayState = !autoPlay;
+    setAutoPlay(newAutoPlayState);
+    sendMessage("updateTrack", {
+      messageType: "setAutoPlay",
+      currentTrack: {
+        ...currentTrack,
+        progress: currentTrack.progress,
+      },
+      playing: playbackState.playing,
+      autoPlay: newAutoPlayState,
+    });
+  };
 
   const deleteSavedPlaylist = (playlistId) => {
     try {
@@ -311,8 +343,8 @@ export default function Player() {
         const response = await fetch(`/api/playlist?url=${inputValue}`);
         const playlistData = await response.json();
 
-        const newTracks = playlistData.songs.map((item, index) => ({
-          id: `${Date.now().toString()}${index}`,
+        const newTracks = playlistData.songs.map((item) => ({
+          id: item.id,
           url: item.url,
           title: item.title,
           thumbnail: item.thumbnail,
@@ -334,7 +366,6 @@ export default function Player() {
 
         if (playlist.length == 0) {
           const firstTrack = newTracks[0];
-          console.log("First track:", firstTrack);
           setCurrentTrack(firstTrack);
           setPlaybackState((prev) => ({ ...prev, playing: true }));
           sendMessage("updateTrack", {
@@ -348,12 +379,14 @@ export default function Player() {
           `https://noembed.com/embed?dataType=json&url=${inputValue}`
         ).then((res) => res.json());
 
+        const videoId = new URL(inputValue).searchParams.get("v");
+
         const newTrack = {
-          id: Date.now().toString(),
+          id: videoId.toString(),
           url: inputValue,
           title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
           thumbnail: newTrackData.thumbnail_url || null,
-          authorName: item.author_name || null,
+          authorName: newTrackData.author_name || null,
           addedBy:
             localStorage.getItem("userName") ||
             localStorage.getItem("userId").slice(0, 8),
@@ -439,21 +472,52 @@ export default function Player() {
     }
   };
 
-  const playNextTrack = useCallback(() => {
+  const playNextTrack = useCallback(async () => {
     if (!playlist || playlist.length === 0) return;
+
     const currentTrackIndex = playlist.findIndex(
       (track) => track.id === currentTrack.id
     );
-    const nextTrack = playlist[(currentTrackIndex + 1) % playlist.length];
-    if (nextTrack) {
-      setCurrentTrack(nextTrack);
-      setPlaybackState((prev) => ({ ...prev, progress: 0 }));
-      sendMessage("updateTrack", {
-        currentTrack: { ...nextTrack, progress: 0 },
-        playing: true,
-      });
+
+    if (currentTrackIndex === playlist.length - 1 && autoPlay) {
+      const recommendedTracks = await getRecommendedTracks(currentTrack.url);
+      if (recommendedTracks.length > 0) {
+        const newTracks = recommendedTracks.map((track) => ({
+          ...track,
+          addedBy: "系統推薦",
+        }));
+        const updatedPlaylist = [...playlist, ...newTracks];
+        setPlaylist(updatedPlaylist);
+
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: "推薦歌曲",
+          playlistLength: newTracks.length,
+          playlist: updatedPlaylist,
+        });
+
+        const nextTrack = newTracks[0];
+        setCurrentTrack(nextTrack);
+        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+        sendMessage("updateTrack", {
+          currentTrack: { ...nextTrack, progress: 0 },
+          playing: true,
+        });
+      } else {
+        console.error("無法獲取推薦歌曲");
+      }
+    } else {
+      const nextTrack = playlist[(currentTrackIndex + 1) % playlist.length];
+      if (nextTrack) {
+        setCurrentTrack(nextTrack);
+        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+        sendMessage("updateTrack", {
+          currentTrack: { ...nextTrack, progress: 0 },
+          playing: true,
+        });
+      }
     }
-  });
+  }, [playlist, currentTrack, autoPlay, getRecommendedTracks, sendMessage]);
 
   const shufflePlaylist = () => {
     const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
@@ -767,11 +831,29 @@ export default function Player() {
                     </button>
                     <button
                       className={styles.button}
+                      onClick={handleSetAutoPlay}
+                      title="自動播放"
+                      style={
+                        autoPlay
+                          ? {
+                              color: "#86AB89",
+                            }
+                          : {
+                              outlineColor: "grey",
+                              color: "grey",
+                            }
+                      }
+                    >
+                      自動播放
+                    </button>
+                    <button
+                      className={styles.button}
                       onClick={shufflePlaylist}
                       title="隨機播放清單"
                     >
                       隨機播放清單
                     </button>
+
                     <button
                       className={styles.button}
                       onClick={togglePlayPause}

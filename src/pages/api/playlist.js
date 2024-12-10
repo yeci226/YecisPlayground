@@ -7,6 +7,7 @@ export default async function handler(req, res) {
 
     const playlistName = playlistData.title;
     const newPlaylist = playlistData.items.map((item) => ({
+      id: item.id,
       title: item.title,
       url: item.shortUrl,
       thumbnail: item.thumbnail,
