@@ -10,6 +10,7 @@ export default async function handler(req, res) {
       title: item.title,
       url: item.shortUrl,
       thumbnail: item.thumbnail,
+      authorName: item.author.name,
     }));
 
     return res.status(200).json({ name: playlistName, songs: newPlaylist });

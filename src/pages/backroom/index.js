@@ -70,7 +70,9 @@ export default function Home() {
       setSelectedAvatar(JSON.parse(storedAvatar));
     }
 
-    const socket = new WebSocket("ws://localhost:4400");
+    const socket = new WebSocket(
+      "wss://b683-2001-df2-45c1-18-00-1.ngrok-free.app"
+    );
 
     socket.onopen = () => {
       console.log("Connected to WebSocket server");

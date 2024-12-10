@@ -57,7 +57,9 @@ export default function Player() {
     }
 
     try {
-      const ws = new WebSocket("ws://localhost:4400");
+      const ws = new WebSocket(
+        "wss://b683-2001-df2-45c1-18-00-1.ngrok-free.app"
+      );
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
@@ -276,9 +278,12 @@ export default function Player() {
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {
+      let message = messageInput.trim();
+      if (message.length > 200) message = message.slice(0, 200);
+
       sendMessage("messageAction", {
         timestamp: new Date().toLocaleTimeString(),
-        message: messageInput,
+        message,
       });
       setMessageInput("");
     }
@@ -311,6 +316,7 @@ export default function Player() {
           url: item.url,
           title: item.title,
           thumbnail: item.thumbnail,
+          authorName: item.authorName,
           addedBy:
             localStorage.getItem("userName") ||
             localStorage.getItem("userId").slice(0, 8),
@@ -347,6 +353,7 @@ export default function Player() {
           url: inputValue,
           title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
           thumbnail: newTrackData.thumbnail_url || null,
+          authorName: item.author_name || null,
           addedBy:
             localStorage.getItem("userName") ||
             localStorage.getItem("userId").slice(0, 8),
@@ -447,6 +454,15 @@ export default function Player() {
       });
     }
   });
+
+  const shufflePlaylist = () => {
+    const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
+    setPlaylist(shuffledPlaylist);
+    sendMessage("updatePlaylist", {
+      messageType: "shufflePlaylist",
+      playlist: shuffledPlaylist,
+    });
+  };
 
   const loadSavedPlaylist = (playlistId) => {
     try {
@@ -655,6 +671,10 @@ export default function Player() {
                                 />
                               )}
                               <span>{track.title}</span>
+
+                              <span className={styles.addedBy}>
+                                #{track.authorName} Added By: {track.addedBy}
+                              </span>
                             </li>
                           )}
                         </Draggable>
@@ -722,7 +742,14 @@ export default function Player() {
               </div>
 
               <div className={styles.controlPanel}>
-                <button className={styles.button} onClick={toggleImmersiveMode}>
+                <button
+                  className={styles.button}
+                  onClick={toggleImmersiveMode}
+                  style={{
+                    outlineColor: "#89A8B2",
+                    color: "#89A8B2",
+                  }}
+                >
                   {immersiveMode ? "返回" : "放大"}
                 </button>
                 {!immersiveMode && (
@@ -731,8 +758,19 @@ export default function Player() {
                       className={styles.button}
                       onClick={savePlaylist}
                       title="儲存當前播放清單"
+                      style={{
+                        outlineColor: "#89A8B2",
+                        color: "#89A8B2",
+                      }}
                     >
                       儲存清單
+                    </button>
+                    <button
+                      className={styles.button}
+                      onClick={shufflePlaylist}
+                      title="隨機播放清單"
+                    >
+                      隨機播放清單
                     </button>
                     <button
                       className={styles.button}
@@ -794,11 +832,22 @@ export default function Player() {
           )}
         </div>
         <div
-          className={styles.audioControls}
-          style={{ display: "flex", gap: "10vw", flexDirection: "row" }}
+          style={{
+            maxWidth: "30vw",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "10px",
+          }}
         >
           {logs.length > 0 && !immersiveMode && (
-            <div className={styles.loggerContainer}>
+            <div
+              className={styles.loggerContainer}
+              style={{
+                width: "100%",
+              }}
+            >
               <a>房間日誌</a>
               <ul>
                 {logs
@@ -826,7 +875,12 @@ export default function Player() {
             </div>
           )}
           {savedPlaylists.length > 0 && !immersiveMode && (
-            <div className={styles.savedPlaylistsContainer}>
+            <div
+              className={styles.savedPlaylistsContainer}
+              style={{
+                width: "100%",
+              }}
+            >
               <a>已儲存的播放清單 (點擊以載入)</a>
               {savedPlaylists.map((pl) => (
                 <div key={pl.id} className={styles.savedPlaylistItem}>

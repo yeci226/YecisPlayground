@@ -76,16 +76,17 @@
   display: flex;
   flex-direction: column;
   margin: 10px;
-  padding: 20px;
+  padding: 10px;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
   max-height: 300px; /* 設置最大高度 */
-  min-width: 300px;
-  max-width: 500px;
   text-align: left; /* 文字靠左 */
+  width: 100%; /* 寬度跟隨父元素 */
+  box-sizing: border-box; /* 包含 padding 和 border */
   overflow-y: auto;
   overflow-x: hidden;
 }
+
 
 .loggerContainer ul {
   list-style: none; /* 移除項目符號 */
@@ -114,7 +115,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 50px 0 30px 0;
+  margin-top: 10px;
   padding: 20px;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
@@ -133,13 +134,15 @@
 }
 
 .messageInput {
-  bottom: 0;
-  left: 0;
+  background: none;
+  border: none;
+  border-radius: 5px;
   color: var(--fallback-bc);
-  font-size: 0.6rem;
+  font-size: 1.1rem;
+  margin-right: 10px;
+  outline: none;
+  padding: 10px;
   font-family: "YinPing", sans-serif;
-  width: 100%;
-  background: var(--fallback-bg);
 }
 
 .audioControls input {
@@ -467,6 +470,15 @@
 .playlistContainer li:hover {
   /* text-decoration: underline; */
   cursor: default;
+}
+
+.author {
+  font-size: 0.8rem;
+  color: grey;
+  margin-top: 5px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  margin-top: 5px;
 }
 
 .addedBy {
