@@ -177,6 +177,53 @@
   user-select: none;
 }
 
+.searchResults {
+  position: fixed; /* 固定位置 */
+  top: 50%; /* 距離頂部 20% */
+  left: 50%; /* 水平居中 */
+  transform: translate(-50%, -50%); /* 修正居中的位置 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.5); /* 半透明背景 */
+  color: #fff; /* 白色文字，提升可讀性 */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* 添加陰影效果 */
+  z-index: 1000; /* 確保顯示在其他內容之上 */
+  max-height: 80%; /* 限制高度 */
+  overflow-y: auto; /* 若內容超出高度，允許滾動 */
+  width: 50%; /* 寬度為 50% */
+  max-height: 50vh;
+}
+
+.closeButton {
+  position: sticky;
+  top: 3px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 1100;
+}
+
+.closeButton:hover {
+  color: #f05454; /* 懸停時更醒目的顏色 */
+}
+
+.searchResultItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  background-color: var(--bc);
+  margin-top: 10px;
+}
+
 .button {
   background: none;
   border-radius: 10px;

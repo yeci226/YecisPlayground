@@ -12,6 +12,7 @@ export default function Player() {
   const { id } = router.query;
   const socketRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
   const [messageInput, setMessageInput] = useState("");
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -329,97 +330,120 @@ export default function Player() {
     }
   };
 
-  // Add new track to playlist
-  const handleLinkSubmit = useCallback(async () => {
-    if (!inputValue) return;
-    if (!ReactPlayer.canPlay(inputValue)) {
-      alert(`無法播放此連結\n${inputValue}`);
-      setInputValue("");
-      return;
+  function generateUniqueId(baseId, playlist) {
+    let uniqueId = baseId;
+    let counter = 1;
+
+    // 检查是否存在相同 ID，如果有则尝试新的 ID
+    while (playlist.some((item) => item.id === uniqueId)) {
+      uniqueId = `${baseId}${counter}`;
+      counter++;
     }
 
-    try {
-      if (inputValue.includes("playlist?")) {
-        const response = await fetch(`/api/playlist?url=${inputValue}`);
-        const playlistData = await response.json();
+    return uniqueId;
+  }
 
-        const newTracks = playlistData.songs.map((item) => ({
-          id: item.id,
-          url: item.url,
-          title: item.title,
-          thumbnail: item.thumbnail,
-          authorName: item.authorName,
-          addedBy:
-            localStorage.getItem("userName") ||
-            localStorage.getItem("userId").slice(0, 8),
-        }));
-
-        const updatedPlaylist = [...playlist, ...newTracks];
-        setPlaylist(updatedPlaylist);
-
-        sendMessage("updatePlaylist", {
-          messageType: "addPlaylist",
-          playlistName: playlistData.name,
-          playlistLength: playlistData.songs.length,
-          playlist: updatedPlaylist,
-        });
-
-        if (playlist.length == 0) {
-          const firstTrack = newTracks[0];
-          setCurrentTrack(firstTrack);
-          setPlaybackState((prev) => ({ ...prev, playing: true }));
-          sendMessage("updateTrack", {
-            messageType: "addTrack",
-            currentTrack: { ...firstTrack, progress: 0 },
-            playing: true,
-          });
-        }
-      } else {
-        const newTrackData = await fetch(
-          `https://noembed.com/embed?dataType=json&url=${inputValue}`
-        ).then((res) => res.json());
-
-        const videoId = new URL(inputValue).searchParams.get("v");
-
-        const newTrack = {
-          id: videoId.toString(),
-          url: inputValue,
-          title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
-          thumbnail: newTrackData.thumbnail_url || null,
-          authorName: newTrackData.author_name || null,
-          addedBy:
-            localStorage.getItem("userName") ||
-            localStorage.getItem("userId").slice(0, 8),
-        };
-
-        const updatedPlaylist = [...playlist, newTrack];
-        setPlaylist(updatedPlaylist);
-        sendMessage("updatePlaylist", {
-          messageType: "addTrack",
-          trackName: newTrack.title,
-          playlist: updatedPlaylist,
-        });
-
-        if (playlist.length == 0) {
-          setCurrentTrack(newTrack);
-          setPlaybackState((prev) => ({ ...prev, playing: true }));
-          sendMessage("updateTrack", {
-            currentTrack: { ...newTrack, progress: 0 },
-            playing: true,
-          });
-        }
+  // Add new track to playlist
+  const handleLinkSubmit = useCallback(
+    async (trackUrl = inputValue.trim()) => {
+      if (!trackUrl) return;
+      if (!ReactPlayer.canPlay(trackUrl)) {
+        alert(`無法播放此連結\n${trackUrl}`);
+        setInputValue("");
+        return;
       }
 
-      setInputValue("");
-    } catch (error) {
-      console.error("Failed to add track:", error);
-    }
-  }, [inputValue, playlist, sendMessage]);
+      try {
+        if (trackUrl.includes("playlist?")) {
+          const response = await fetch(`/api/playlist?url=${trackUrl}`);
+          const playlistData = await response.json();
+
+          const newTracks = playlistData.songs.map((item) => {
+            const uniqueId = generateUniqueId(item.id, playlist);
+
+            return {
+              id: uniqueId,
+              url: item.url,
+              title: item.title,
+              thumbnail: item.thumbnail,
+              authorName: item.authorName,
+              addedBy:
+                localStorage.getItem("userName") ||
+                localStorage.getItem("userId").slice(0, 8),
+            };
+          });
+
+          const updatedPlaylist = [...playlist, ...newTracks];
+          setPlaylist(updatedPlaylist);
+
+          sendMessage("updatePlaylist", {
+            messageType: "addPlaylist",
+            playlistName: playlistData.name,
+            playlistLength: playlistData.songs.length,
+            playlist: updatedPlaylist,
+          });
+
+          if (playlist.length == 0) {
+            const firstTrack = newTracks[0];
+            setCurrentTrack(firstTrack);
+            setPlaybackState((prev) => ({ ...prev, playing: true }));
+            sendMessage("updateTrack", {
+              messageType: "addTrack",
+              currentTrack: { ...firstTrack, progress: 0 },
+              playing: true,
+            });
+          }
+        } else {
+          const newTrackData = await fetch(
+            `https://noembed.com/embed?dataType=json&url=${trackUrl}`
+          ).then((res) => res.json());
+
+          const videoId = new URL(trackUrl).searchParams.get("v");
+
+          const newTrack = {
+            id: generateUniqueId(videoId, playlist),
+            url: trackUrl,
+            title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
+            thumbnail: newTrackData.thumbnail_url || null,
+            authorName: newTrackData.author_name || null,
+            addedBy:
+              localStorage.getItem("userName") ||
+              localStorage.getItem("userId").slice(0, 8),
+          };
+
+          const updatedPlaylist = [...playlist, newTrack];
+          setPlaylist(updatedPlaylist);
+          sendMessage("updatePlaylist", {
+            messageType: "addTrack",
+            trackName: newTrack.title,
+            playlist: updatedPlaylist,
+          });
+
+          if (playlist.length == 0) {
+            setCurrentTrack(newTrack);
+            setPlaybackState((prev) => ({ ...prev, playing: true }));
+            sendMessage("updateTrack", {
+              currentTrack: { ...newTrack, progress: 0 },
+              playing: true,
+            });
+          }
+        }
+
+        setInputValue("");
+      } catch (error) {
+        console.error("Failed to add track:", error);
+      }
+    },
+    [inputValue, playlist, sendMessage]
+  );
 
   const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+    return `${hours > 0 ? `${hours}:` : ""}${
+      minutes < 10 && hours > 0 ? `0${minutes}` : minutes
+    }:${secs < 10 ? `0${secs}` : secs}`;
   };
 
   // Change current track
@@ -427,6 +451,9 @@ export default function Player() {
     (trackId) => {
       const track = playlist.find((t) => t.id == trackId);
       if (track) {
+        if (currentTrack && currentTrack.url == track.url)
+          playerRef.current.seekTo(0);
+
         setCurrentTrack(track);
         setPlaybackState((prev) => ({ ...prev, playing: true }));
         sendMessage("updateTrack", {
@@ -509,6 +536,9 @@ export default function Player() {
     } else {
       const nextTrack = playlist[(currentTrackIndex + 1) % playlist.length];
       if (nextTrack) {
+        if (currentTrack && currentTrack.url == nextTrack.url)
+          playerRef.current.seekTo(0);
+
         setCurrentTrack(nextTrack);
         setPlaybackState((prev) => ({ ...prev, progress: 0 }));
         sendMessage("updateTrack", {
@@ -587,6 +617,27 @@ export default function Player() {
     }
   };
 
+  const handleSearch = async () => {
+    if (!inputValue.trim()) return;
+
+    // if input is a URL, use handleLinkSubmit
+    if (ReactPlayer.canPlay(inputValue)) {
+      handleLinkSubmit();
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/search?keyword=${encodeURIComponent(inputValue)}`
+      );
+      const data = await response.json();
+      setSearchResults(data || []); // 假設返回的結果是 { tracks: [...] }
+    } catch (error) {
+      console.error("搜尋失敗：", error);
+      alert("搜尋失敗，請稍後再試！");
+    }
+  };
+
   const clearPlaylist = () => {
     const confirmed = window.confirm("確定要清空播放清單嗎？");
     if (confirmed) {
@@ -623,15 +674,47 @@ export default function Player() {
             <div className={styles.audioControls}>
               <input
                 type="text"
-                placeholder="在這裡輸入連結"
+                placeholder="在這裡輸入名字或連結"
                 value={inputValue}
                 className={inputValue ? styles.active : ""}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
               />
-              <button className={styles.button} onClick={handleLinkSubmit}>
-                添加到歌單
+              <button className={styles.button} onClick={handleSearch}>
+                搜尋
               </button>
             </div>
+
+            {searchResults.length > 0 && (
+              <div className={styles.searchResults}>
+                <button
+                  className={styles.closeButton}
+                  onClick={() => setSearchResults([])} // 點擊時清空搜尋結果
+                >
+                  ✖
+                </button>
+                {searchResults.map((track, index) => (
+                  <div key={index} className={styles.searchResultItem}>
+                    <img
+                      src={track.thumbnail}
+                      alt={track.title}
+                      className={styles.thumbnail}
+                    />
+                    <span>
+                      {track.title} - {track.authorName}
+                    </span>
+                    <button
+                      onClick={() => handleLinkSubmit(track.url)}
+                      className={styles.button}
+                    >
+                      添加
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -737,7 +820,9 @@ export default function Player() {
                               <span>{track.title}</span>
 
                               <span className={styles.addedBy}>
-                                #{track.authorName} Added By: {track.addedBy}
+                                {track.id}{" "}
+                                {track.authorName ? `#${track.authorName}` : ""}{" "}
+                                Added By: {track.addedBy}
                               </span>
                             </li>
                           )}
