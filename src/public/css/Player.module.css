@@ -142,7 +142,7 @@
   margin-right: 10px;
   outline: none;
   padding: 10px;
-  font-family: "YinPing", sans-serif;
+  font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 .audioControls input {
@@ -154,7 +154,7 @@
   margin-right: 10px;
   outline: none;
   padding: 10px;
-  font-family: "YinPing", sans-serif;
+  font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 .audioControls input.active {
@@ -177,24 +177,89 @@
   user-select: none;
 }
 
-.searchResults {
-  position: fixed; /* 固定位置 */
-  top: 50%; /* 距離頂部 20% */
-  left: 50%; /* 水平居中 */
-  transform: translate(-50%, -50%); /* 修正居中的位置 */
+.searching {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.searching::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 4px solid #86ab89;
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+.searchResultsHeader {
+  position: sticky;
+  top: 0; 
+  left: 0; 
+  width: fit-content;
+  max-width: 100%; 
+  background-color: var(--bc);
+  z-index: 10; 
+  padding: 3px;
+}
+
+
+.searchResultsList {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  width: 100%;
+  border-radius: 10px;
+  background-color: var(--bc);
+}
+
+.searchResults {
+  position: fixed; /* 固定位置 */
+  top: 50%; /* 垂直居中 */
+  left: 50%; /* 水平居中 */
+  transform: translate(-50%, -50%); /* 精確居中 */
+  display: flex;
+  flex-direction: column;
   padding: 20px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.5); /* 半透明背景 */
-  color: #fff; /* 白色文字，提升可讀性 */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* 添加陰影效果 */
-  z-index: 1000; /* 確保顯示在其他內容之上 */
-  max-height: 80%; /* 限制高度 */
-  overflow-y: auto; /* 若內容超出高度，允許滾動 */
-  width: 50%; /* 寬度為 50% */
-  max-height: 50vh;
+  background: rgba(0, 0, 0, 0.85); /* 更深的半透明背景 */
+  outline: 3px solid #86ab89; /* 綠色邊框 */
+  color: #fff; /* 白色文字 */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); /* 加強陰影效果 */
+  z-index: 1000; /* 確保在其他內容之上 */
+  max-height: 70vh; /* 更合適的高度限制 */
+  overflow-y: auto; /* 垂直滾動 */
+  width: 60%; /* 調整寬度比例 */
+  max-width: 75vw; /* 設定最大寬度以限制過寬 */
+  transition: transform 0.3s ease, opacity 0.3s ease; /* 添加動畫效果 */
+  max-height: 50vh; /* 限制最大高度 */
+}
+
+.searchResults::-webkit-scrollbar {
+  width: 8px;
+}
+
+.searchResults::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+.searchResults::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.trackTitle {
+  margin: 0 10px 0 10px;
 }
 
 .closeButton {
@@ -225,6 +290,8 @@
 }
 
 .button {
+  flex-shrink: 0; /* 防止按鈕被壓縮 */
+  white-space: nowrap; /* 防止文字換行 */
   background: none;
   border-radius: 10px;
   color: var(--fallback-bc);
@@ -235,7 +302,7 @@
   cursor: pointer;
   user-select: none;
   outline: 2px solid #86ab89;
-  font-family: "YinPing", sans-serif;
+  font-family: "YinPing", YinPing-JP, sans-serif;
   max-width: max-content;
 }
 

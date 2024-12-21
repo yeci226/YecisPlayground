@@ -22,6 +22,8 @@ export default function Player() {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [savedPlaylists, setSavedPlaylists] = useState([]);
   const [immersiveMode, setImmersiveMode] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [playbackState, setPlaybackState] = useState({
     playing: false,
@@ -618,7 +620,7 @@ export default function Player() {
   };
 
   const handleSearch = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isSearching || cooldown > 0) return;
 
     // if input is a URL, use handleLinkSubmit
     if (ReactPlayer.canPlay(inputValue)) {
@@ -626,16 +628,33 @@ export default function Player() {
       return;
     }
 
+    setIsSearching(true);
     try {
       const response = await fetch(
         `/api/search?keyword=${encodeURIComponent(inputValue)}`
       );
       const data = await response.json();
-      setSearchResults(data || []); // 假設返回的結果是 { tracks: [...] }
+      setSearchResults(data || []);
     } catch (error) {
       console.error("搜尋失敗：", error);
       alert("搜尋失敗，請稍後再試！");
+    } finally {
+      setIsSearching(false);
+      startCooldown(2);
     }
+  };
+
+  const startCooldown = (seconds) => {
+    setCooldown(seconds);
+    const interval = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const clearPlaylist = () => {
@@ -669,7 +688,15 @@ export default function Player() {
       >
         {!immersiveMode && (
           <>
-            <div className={styles.audioControls}>
+            <h1 />
+            <div
+              className={styles.audioControls}
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <input
                 type="text"
                 placeholder="在這裡輸入名字或連結"
@@ -677,40 +704,56 @@ export default function Player() {
                 className={inputValue ? styles.active : ""}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
+                  if (e.key === "Enter" && !(cooldown > 0 || isSearching)) {
+                    handleSearch();
+                  }
                 }}
               />
-              <button className={styles.button} onClick={handleSearch}>
-                搜尋
+              <button
+                className={styles.button}
+                onClick={handleSearch}
+                disabled={cooldown > 0 || isSearching}
+              >
+                {isSearching ? (
+                  <span className={styles.searching}>搜尋中...</span>
+                ) : cooldown > 0 ? (
+                  `冷卻中 (${cooldown})`
+                ) : (
+                  "搜尋"
+                )}
               </button>
             </div>
 
             {searchResults.length > 0 && (
               <div className={styles.searchResults}>
-                <button
-                  className={styles.closeButton}
-                  onClick={() => setSearchResults([])} // 點擊時清空搜尋結果
-                >
-                  ✖
-                </button>
-                {searchResults.map((track, index) => (
-                  <div key={index} className={styles.searchResultItem}>
-                    <img
-                      src={track.thumbnail}
-                      alt={track.title}
-                      className={styles.thumbnail}
-                    />
-                    <span>
-                      {track.title} - {track.authorName}
-                    </span>
-                    <button
-                      onClick={() => handleLinkSubmit(track.url)}
-                      className={styles.button}
-                    >
-                      添加
-                    </button>
-                  </div>
-                ))}
+                <div className={styles.searchResultsHeader}>
+                  <button
+                    className={styles.closeButton}
+                    onClick={() => setSearchResults([])}
+                  >
+                    ✖
+                  </button>
+                </div>
+                <div className={styles.searchResultsList}>
+                  {searchResults.map((track, index) => (
+                    <div key={index} className={styles.searchResultItem}>
+                      <img
+                        src={track.thumbnail}
+                        alt={track.title}
+                        className={styles.thumbnail}
+                      />
+                      <span className={styles.trackTitle}>{track.title}</span>
+                      <div className={styles.trackActions}>
+                        <button
+                          onClick={() => handleLinkSubmit(track.url)}
+                          className={styles.button}
+                        >
+                          添加
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>
