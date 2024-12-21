@@ -48,8 +48,10 @@ export default function About() {
   const typingRefH1 = useRef(null);
   const typingRefH2 = useRef(null);
   const [showSocialMedia, setShowSocialMedia] = useState(false);
+  const [commits, setCommits] = useState([]);
 
   useEffect(() => {
+    getCommits();
     if (
       typingRefH1.current.textContent === "" &&
       typingRefH2.current.textContent === ""
@@ -110,6 +112,36 @@ export default function About() {
     zqnda: [zqndaIamge.src],
     unknown: [unknown1Image.src, unknown2Image.src, unknown3Image.src],
   };
+
+  const getCommits = async () => {
+    const response = await fetch("/api/github");
+    const data = await response.json();
+
+    setCommits(data);
+  };
+
+  function timeAgo(date) {
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    const intervals = [
+      { label: "年", seconds: 31536000 },
+      { label: "月", seconds: 2592000 },
+      { label: "週", seconds: 604800 },
+      { label: "天", seconds: 86400 },
+      { label: "小時", seconds: 3600 },
+      { label: "分鐘", seconds: 60 },
+      { label: "秒", seconds: 1 },
+    ];
+
+    for (const interval of intervals) {
+      const count = Math.floor(seconds / interval.seconds);
+      if (count > 0) {
+        return `${count} ${interval.label}前`;
+      }
+    }
+    return "剛剛";
+  }
 
   function AutoSwitchImage({ images, interval = 5000 }) {
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -390,6 +422,36 @@ export default function About() {
               <AutoSwitchImage images={projectImages.unknown} interval={5000} />
             </div>
           </Masonry>
+        </div>
+
+        <div className={styles.commitContainer}>
+          <span
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              marginBottom: "1rem",
+            }}
+          >
+            最近的提交
+          </span>
+          <div className={styles.commitList}>
+            {commits.map((commit) => (
+              <div key={commit.sha} className={styles.commitItem}>
+                <a
+                  href={commit.url}
+                  className={styles.commitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  #{commit.sha}
+                </a>
+                <p className={styles.commitMessage}>{commit.message}</p>
+                <p className={styles.commitDate}>
+                  {timeAgo(new Date(commit.date))}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

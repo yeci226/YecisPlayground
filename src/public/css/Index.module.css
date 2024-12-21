@@ -18,6 +18,56 @@
   gap: 2rem;
 }
 
+.commitContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 10vh;
+  gap: 2rem;
+}
+
+.commitList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.commitContent {
+  flex-grow: 1;
+  margin-right: 1rem;
+}
+
+.commitMessage {
+  margin: 0 1rem 0 1rem;
+}
+
+.commitUrl {
+  color: #86ab89;
+  text-decoration: none;
+}
+
+.commitDate {
+  text-align: right;
+  color: #868686;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.commitUrl:hover {
+  text-decoration: underline;
+}
+
+.commitItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.5rem;
+}
+
 .profileText {
   font-size: calc(0.5rem + 0.5vw);
   min-width: fit-content;
