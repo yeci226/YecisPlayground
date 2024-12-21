@@ -7,7 +7,7 @@
     margin-bottom: 10px;    
     font-size: 14px;
     border-radius: 10px;
-    font-family: "YinPing", sans-serif;
+    font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 .messageInput {
@@ -19,7 +19,7 @@
     margin-right: 10px;
     outline: none;
     padding: 10px;
-    font-family: "YinPing", sans-serif;
+    font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 .messageInput input.active {

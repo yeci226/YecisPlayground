@@ -37,13 +37,13 @@
 .dropdown {
     display: inline-flex;
     position: relative;
-    font-family: "YinPing", sans-serif;
+    font-family: "YinPing", YinPing-JP, sans-serif;
     font-size: 16px;
     z-index: 1;
 }
 
 .dropdown button {
-    font-family: "YinPing", sans-serif;
+    font-family: "YinPing", YinPing-JP, sans-serif;
     background: none;
     border: none;
     color: var(--fallback-bc);

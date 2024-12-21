@@ -313,7 +313,7 @@ export default function Home() {
               cursor: "pointer",
               boxShadow: "0 0 5px var(--fallback-bg)",
               userSelect: "none",
-              fontFamily: '"YinPing", sans-serif',
+              fontFamily: '"YinPing", YinPing-JP, sans-serif',
             }}
           >
             角色造型
@@ -408,7 +408,7 @@ export default function Home() {
                         padding: "10px",
                         borderRadius: "5px",
                         cursor: "pointer",
-                        fontFamily: '"YinPing", sans-serif',
+                        fontFamily: '"YinPing", YinPing-JP, sans-serif',
                       }}
                     >
                       {avatar.icon || avatar.name}
@@ -429,7 +429,7 @@ export default function Home() {
                     boxShadow: "0 0 5px var(--fallback-bc)",
                     color: "#fff",
                     cursor: "pointer",
-                    fontFamily: '"YinPing", sans-serif',
+                    fontFamily: '"YinPing", YinPing-JP, sans-serif',
                   }}
                 >
                   確認

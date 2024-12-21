@@ -3,6 +3,11 @@
     src: url('../fonts/YinPing.ttf') format('truetype');
 }
 
+@font-face {
+    font-family: 'YinPing-JP';
+    src: url('../fonts/YinPing-JP.ttf') format('truetype');
+}
+
 :root {
   /* 定義亮色主題變量 */
   --bg: 0.97 0.01 275;
@@ -33,7 +38,7 @@
 :root, [data-theme] {
   background-color: var(--fallback-bg);
   color: var(--fallback-bc);
-  font-family: 'YinPing', sans-serif; 
+  font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 html, body {
