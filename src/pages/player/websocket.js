@@ -747,6 +747,10 @@ export default function Player() {
                         <button
                           onClick={() => handleLinkSubmit(track.url)}
                           className={styles.button}
+                          style={{
+                            outlineColor: "#86AB89",
+                            color: "#86AB89",
+                          }}
                         >
                           添加
                         </button>
