@@ -57,7 +57,7 @@ const Header = () => {
           <NavLink to="/hsr/warp-log">躍遷紀錄</NavLink>
         </div>
       </div>
-      <div className={styles.dropdown} ref={dropdownRef2}>
+      {/* <div className={styles.dropdown} ref={dropdownRef2}>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -74,7 +74,7 @@ const Header = () => {
         >
           <NavLink to="/zzz/signal-log">調頻紀錄</NavLink>
         </div>
-      </div>
+      </div> */}
       <NavLink to="/player/websocket">播放器</NavLink>
       <NavLink to="/backroom">後室</NavLink>
     </header>
