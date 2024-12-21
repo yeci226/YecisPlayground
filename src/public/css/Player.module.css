@@ -568,7 +568,7 @@
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
   overflow-y: scroll;
-  max-height: 50vh;
+  height: 650px;
 }
 
 .playlistContainer::-webkit-scrollbar {
