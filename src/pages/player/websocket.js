@@ -761,7 +761,7 @@ export default function Player() {
 
         <div
           className={styles.audioControls}
-          style={{ display: "flex", gap: "10vw", flexDirection: "row" }}
+          style={{ display: "flex", gap: "3vw", flexDirection: "row" }}
         >
           {playlist?.length > 0 && !immersiveMode && (
             <div className={styles.playlistContainer}>

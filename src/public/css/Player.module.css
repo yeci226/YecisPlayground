@@ -202,7 +202,6 @@
   }
 }
 
-
 .searchResultsHeader {
   position: sticky;
   top: 0; 
@@ -570,6 +569,19 @@
   outline: 2px solid var(--fallback-bc);
   overflow-y: scroll;
   max-height: 50vh;
+}
+
+.playlistContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.playlistContainer::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+.playlistContainer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .playlistContainer h1 {
