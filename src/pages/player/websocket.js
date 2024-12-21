@@ -659,7 +659,7 @@ export default function Player() {
   return (
     <div>
       <Head>
-        <title>網路插座播放器 - 房間 {id}</title>
+        <title>網路插座播放器</title>
       </Head>
 
       <div
@@ -669,8 +669,6 @@ export default function Player() {
       >
         {!immersiveMode && (
           <>
-            <h1>網路插座播放器 - 房間 {id}</h1>
-
             <div className={styles.audioControls}>
               <input
                 type="text"
