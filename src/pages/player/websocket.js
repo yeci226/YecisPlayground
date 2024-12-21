@@ -861,9 +861,17 @@ export default function Player() {
                               <span>{track.title}</span>
 
                               <span className={styles.addedBy}>
-                                {track.id}{" "}
-                                {track.authorName ? `#${track.authorName}` : ""}{" "}
-                                Added By: {track.addedBy}
+                                <span
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    color: "grey",
+                                  }}
+                                >
+                                  {track.authorName
+                                    ? `${track.authorName}`
+                                    : ""}
+                                </span>{" "}
+                                ▪︎ {track.addedBy}
                               </span>
                             </li>
                           )}
