@@ -695,6 +695,7 @@ export default function Player() {
                 display: "flex",
                 flexDirection: "row",
                 alignItems: "center",
+                marginBottom: "1rem",
               }}
             >
               <input
@@ -763,277 +764,390 @@ export default function Player() {
           </>
         )}
 
+        {/* 中間部分 */}
         <div
           className={styles.audioControls}
-          style={{ display: "flex", gap: "3vw", flexDirection: "row" }}
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "center",
+            width: "90vw",
+            height: "75vh",
+          }}
         >
-          {playlist?.length > 0 && !immersiveMode && (
-            <div className={styles.playlistContainer}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  padding: "0 10px 0 10px",
-                }}
-              >
-                <h1
-                  style={{
-                    paddingTop: "0",
-                    fontSize: "calc(0.8rem + 0.6vw)",
-                  }}
-                >
-                  共用播放列表-{playlist.length}首歌曲
-                </h1>
-                <button
-                  className={styles.button}
-                  style={{
-                    outlineColor: "#F95454",
-                    color: "#F95454",
-                    height: "min-content",
-                  }}
-                  onClick={clearPlaylist}
-                >
-                  清空歌單
-                </button>
-              </div>
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable droppableId="playlist">
-                  {(provided) => (
-                    <ul
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      style={{ listStyleType: "none", padding: 0 }}
+          {!immersiveMode && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                minWidth: 400 /* 固定寬度 */,
+                maxWidth: "30vw" /* 固定寬度 */,
+              }}
+            >
+              {/* 歌單 */}
+              {playlist?.length > 0 && !immersiveMode && (
+                <div className={styles.playlistContainer}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <h1
+                      style={{
+                        paddingTop: "0",
+                      }}
                     >
-                      {playlist.map((track, index) => (
-                        <Draggable
-                          key={track.id}
-                          draggableId={track.id}
-                          index={index}
+                      共用播放列表-{playlist.length}首歌曲
+                    </h1>
+                    <button
+                      className={styles.button}
+                      style={{
+                        outlineColor: "#F95454",
+                        color: "#F95454",
+                        height: "min-content",
+                      }}
+                      onClick={clearPlaylist}
+                    >
+                      清空歌單
+                    </button>
+                  </div>
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="playlist">
+                      {(provided) => (
+                        <ul
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          style={{ listStyleType: "none", padding: 0 }}
                         >
-                          {(provided) => (
-                            <li
+                          {playlist.map((track, index) => (
+                            <Draggable
                               key={track.id}
-                              onClick={() => handleTrackChange(track.id)}
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`${styles.trackElement} ${
-                                track.id === currentTrack.id
-                                  ? styles.active
-                                  : styles.inactive
-                              }`}
-                              style={{
-                                ...provided.draggableProps.style,
-                                position: "relative",
-                                color:
-                                  track.id === currentTrack.id
-                                    ? "#86AB89"
-                                    : "grey",
-                                cursor:
-                                  track.id === currentTrack.id
-                                    ? "default"
-                                    : "pointer",
-                              }}
+                              draggableId={track.id}
+                              index={index}
                             >
-                              <>
-                                {track.id === currentTrack.id ? (
-                                  <button
-                                    className={styles.removeButton}
-                                    style={{ cursor: "default" }}
-                                  >
-                                    🎵
-                                  </button>
-                                ) : (
-                                  <button
-                                    className={styles.removeButton}
-                                    onClick={(event) =>
-                                      handleRemoveTrack(event, track.id)
-                                    }
-                                  >
-                                    ❌
-                                  </button>
-                                )}
-                              </>
-                              {track.thumbnail && (
-                                <img
-                                  src={track.thumbnail}
-                                  alt={track.title}
-                                  className={styles.thumbnail}
-                                />
-                              )}
-                              <span>{track.title}</span>
-
-                              <span className={styles.addedBy}>
-                                <span
+                              {(provided) => (
+                                <li
+                                  key={track.id}
+                                  onClick={() => handleTrackChange(track.id)}
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`${styles.trackElement} ${
+                                    track.id === currentTrack.id
+                                      ? styles.active
+                                      : styles.inactive
+                                  }`}
                                   style={{
-                                    fontSize: "0.8rem",
-                                    color: "grey",
+                                    ...provided.draggableProps.style,
+                                    position: "relative",
+                                    color:
+                                      track.id === currentTrack.id
+                                        ? "#86AB89"
+                                        : "grey",
+                                    cursor:
+                                      track.id === currentTrack.id
+                                        ? "default"
+                                        : "pointer",
                                   }}
                                 >
-                                  {track.authorName
-                                    ? `${track.authorName}`
-                                    : ""}
-                                </span>{" "}
-                                ▪︎ {track.addedBy}
-                              </span>
-                            </li>
-                          )}
-                        </Draggable>
+                                  <>
+                                    {track.id === currentTrack.id ? (
+                                      <button
+                                        className={styles.removeButton}
+                                        style={{ cursor: "default" }}
+                                      >
+                                        🎵
+                                      </button>
+                                    ) : (
+                                      <button
+                                        className={styles.removeButton}
+                                        onClick={(event) =>
+                                          handleRemoveTrack(event, track.id)
+                                        }
+                                      >
+                                        ❌
+                                      </button>
+                                    )}
+                                  </>
+                                  {track.thumbnail && (
+                                    <img
+                                      src={track.thumbnail}
+                                      alt={track.title}
+                                      className={styles.thumbnail}
+                                    />
+                                  )}
+                                  <span>{track.title}</span>
+
+                                  <span className={styles.addedBy}>
+                                    <span
+                                      style={{
+                                        fontSize: "0.8rem",
+                                        color: "grey",
+                                      }}
+                                    >
+                                      {track.authorName
+                                        ? `${track.authorName}`
+                                        : ""}
+                                    </span>{" "}
+                                    ▪︎ {track.addedBy}
+                                  </span>
+                                </li>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </ul>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                </div>
+              )}
+
+              {/* 日誌 */}
+              {logs.length > 0 && !immersiveMode && (
+                <div className={styles.loggerContainer}>
+                  <a>房間日誌</a>
+                  <ul
+                    style={{
+                      listStyleType: "none",
+                      padding: 0,
+                      flex: 1,
+                      overflowY: "hidden",
+                    }}
+                  >
+                    {logs
+                      .slice(0)
+                      .reverse()
+                      // .filter((_, index) => index < 5)
+                      .map((log, index) => (
+                        <li key={index}>
+                          <span className={styles.logTime}>
+                            {log.timestamp}
+                          </span>{" "}
+                          <span className={styles.logMessage}>
+                            {log.message}
+                          </span>
+                        </li>
                       ))}
-                      {provided.placeholder}
-                    </ul>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                  </ul>
+                  <input
+                    type="text"
+                    placeholder="在這裡輸入訊息"
+                    className={styles.messageInput}
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {currentTrack && playlist.length > 0 && (
+          {((currentTrack && playlist.length > 0) ||
+            savedPlaylists.length > 0) && (
             <div
-              className={`${styles.playerContainer} ${
-                immersiveMode ? styles.huge : ""
-              }`}
-              style={immersiveMode ? { display: "block" } : {}}
+              style={
+                immersiveMode
+                  ? {
+                      display: "flex",
+                      flexDirection: "column",
+                      width: "100vw",
+                    }
+                  : {
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 600,
+                    }
+              }
             >
-              <ReactPlayer
-                ref={playerRef}
-                url={currentTrack.url}
-                playing={playbackState.playing}
-                volume={playbackState.volume}
-                onProgress={handleProgress}
-                onEnded={playNextTrack}
-                controls={false}
-                width="100%"
-                height="100%"
-                progressInterval={500}
-              />
-
-              <div className={styles.trackInfo}>
-                {immersiveMode &&
-                  `#${
-                    playlist.findIndex(
-                      (track) => track.id == currentTrack?.id
-                    ) + 1
-                  } - `}
-                {playlist.find((track) => track.id == currentTrack?.id)?.title}
-              </div>
-
-              <div className={styles.progressContainer}>
-                <div className={styles.timeDisplay}>
-                  {immersiveMode ? (
-                    <span>
-                      {formatTime(currentTime)} / {formatTime(duration)}
-                    </span>
-                  ) : (
-                    <>
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </>
-                  )}
-                </div>
-                <input
-                  className={styles.progressBar}
-                  type="range"
-                  min={0}
-                  max={duration || 0}
-                  value={currentTime}
-                  disabled={true}
-                  style={{ "--value": `${timePercentage}%` }}
-                />
-              </div>
-
-              <div className={styles.controlPanel}>
-                <button
-                  className={styles.button}
-                  onClick={toggleImmersiveMode}
-                  style={{
-                    outlineColor: "#89A8B2",
-                    color: "#89A8B2",
-                  }}
+              {/* 播放器 */}
+              {currentTrack && playlist.length > 0 && (
+                <div
+                  className={`${styles.playerContainer} ${
+                    immersiveMode ? styles.huge : ""
+                  }`}
+                  style={immersiveMode ? { display: "block" } : {}}
                 >
-                  {immersiveMode ? "返回" : "放大"}
-                </button>
-                {!immersiveMode && (
-                  <>
+                  <div
+                    style={{
+                      flex: 1,
+                      position: "relative",
+                      height: "100%",
+                    }}
+                  >
+                    <ReactPlayer
+                      ref={playerRef}
+                      url={currentTrack.url}
+                      playing={playbackState.playing}
+                      volume={playbackState.volume}
+                      onProgress={handleProgress}
+                      onEnded={playNextTrack}
+                      controls={false}
+                      width="100%"
+                      height="100%"
+                      progressInterval={500}
+                    />
+                  </div>
+
+                  <div className={styles.trackInfo}>
+                    {immersiveMode &&
+                      `#${
+                        playlist.findIndex(
+                          (track) => track.id == currentTrack?.id
+                        ) + 1
+                      } - `}
+                    {
+                      playlist.find((track) => track.id == currentTrack?.id)
+                        ?.title
+                    }
+                  </div>
+
+                  <div className={styles.progressContainer}>
+                    <div className={styles.timeDisplay}>
+                      {immersiveMode ? (
+                        <span>
+                          {formatTime(currentTime)} / {formatTime(duration)}
+                        </span>
+                      ) : (
+                        <>
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      className={styles.progressBar}
+                      type="range"
+                      min={0}
+                      max={duration || 0}
+                      value={currentTime}
+                      disabled={true}
+                      style={{ "--value": `${timePercentage}%` }}
+                    />
+                  </div>
+
+                  <div className={styles.controlPanel}>
                     <button
                       className={styles.button}
-                      onClick={savePlaylist}
-                      title="儲存當前播放清單"
+                      onClick={toggleImmersiveMode}
                       style={{
                         outlineColor: "#89A8B2",
                         color: "#89A8B2",
                       }}
                     >
-                      儲存清單
+                      {immersiveMode ? "返回" : "放大"}
                     </button>
-                    <button
-                      className={styles.button}
-                      onClick={handleSetAutoPlay}
-                      title="自動播放"
-                      style={
-                        autoPlay
-                          ? {
-                              color: "#86AB89",
-                            }
-                          : {
-                              outlineColor: "grey",
-                              color: "grey",
-                            }
-                      }
-                    >
-                      自動播放
-                    </button>
-                    <button
-                      className={styles.button}
-                      onClick={shufflePlaylist}
-                      title="隨機播放清單"
-                    >
-                      隨機播放清單
-                    </button>
+                    {!immersiveMode && (
+                      <>
+                        <button
+                          className={styles.button}
+                          onClick={savePlaylist}
+                          title="儲存當前播放清單"
+                          style={{
+                            outlineColor: "#89A8B2",
+                            color: "#89A8B2",
+                          }}
+                        >
+                          儲存清單
+                        </button>
+                        <button
+                          className={styles.button}
+                          onClick={handleSetAutoPlay}
+                          title="自動播放"
+                          style={
+                            autoPlay
+                              ? {
+                                  color: "#86AB89",
+                                }
+                              : {
+                                  outlineColor: "grey",
+                                  color: "grey",
+                                }
+                          }
+                        >
+                          自動播放
+                        </button>
+                        <button
+                          className={styles.button}
+                          onClick={shufflePlaylist}
+                          title="隨機播放清單"
+                        >
+                          隨機播放清單
+                        </button>
 
-                    <button
-                      className={styles.button}
-                      onClick={togglePlayPause}
-                      title={playbackState.playing ? "暫停" : "播放"}
-                    >
-                      {playbackState.playing ? "暫停" : "播放"}
-                    </button>
-                    <button
-                      className={styles.button}
-                      onClick={playNextTrack}
-                      title="播放下一首"
-                    >
-                      下一首
-                    </button>
-                  </>
-                )}
-              </div>
+                        <button
+                          className={styles.button}
+                          onClick={togglePlayPause}
+                          title={playbackState.playing ? "暫停" : "播放"}
+                        >
+                          {playbackState.playing ? "暫停" : "播放"}
+                        </button>
+                        <button
+                          className={styles.button}
+                          onClick={playNextTrack}
+                          title="播放下一首"
+                        >
+                          下一首
+                        </button>
+                      </>
+                    )}
+                  </div>
 
-              <div className={styles.volumeControl}>
-                <p>
-                  {!immersiveMode ? "音量：" : ""}
-                  {Math.round(playbackState.volume * 100)}%
-                </p>
-                <input
-                  className={styles.progressBar}
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={playbackState.volume}
-                  onChange={(e) => {
-                    setPlaybackState((prev) => ({
-                      ...prev,
-                      volume: parseFloat(e.target.value),
-                    }));
-                  }}
-                  style={{
-                    width: "25%",
-                    "--value": `${playbackState.volume * 100}%`,
-                  }}
-                />
-              </div>
+                  <div className={styles.volumeControl}>
+                    <p>
+                      {!immersiveMode ? "音量：" : ""}
+                      {Math.round(playbackState.volume * 100)}%
+                    </p>
+                    <input
+                      className={styles.progressBar}
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={playbackState.volume}
+                      onChange={(e) => {
+                        setPlaybackState((prev) => ({
+                          ...prev,
+                          volume: parseFloat(e.target.value),
+                        }));
+                      }}
+                      style={{
+                        width: "25%",
+                        "--value": `${playbackState.volume * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 儲存的播放清單 */}
+              {savedPlaylists.length > 0 && !immersiveMode && (
+                <div className={styles.savedPlaylistsContainer}>
+                  <a>已儲存的播放清單 (點擊以載入)</a>
+                  {savedPlaylists.map((pl) => (
+                    <div key={pl.id} className={styles.savedPlaylistItem}>
+                      <span
+                        className={styles.button}
+                        onClick={() => loadSavedPlaylist(pl.id)}
+                      >
+                        {pl.name} - {pl.tracks.length}首單曲 (建立於:{" "}
+                        {new Date(pl.createdAt).toLocaleString()})
+                      </span>
+                      <button
+                        className={styles.button}
+                        style={{ outlineColor: "#F95454", color: "#F95454" }}
+                        onClick={() => deleteSavedPlaylist(pl.id)}
+                      >
+                        刪除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1049,78 +1163,6 @@ export default function Player() {
                 </ul>
               </div>
             </>
-          )}
-        </div>
-        <div
-          style={{
-            maxWidth: "30vw",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "10px",
-          }}
-        >
-          {logs.length > 0 && !immersiveMode && (
-            <div
-              className={styles.loggerContainer}
-              style={{
-                width: "100%",
-              }}
-            >
-              <a>房間日誌</a>
-              <ul>
-                {logs
-                  .slice(0)
-                  .reverse()
-                  .filter((_, index) => index < 5)
-                  .map((log, index) => (
-                    <li key={index}>
-                      <span className={styles.logTime}>{log.timestamp}</span>{" "}
-                      <span className={styles.logMessage}>{log.message}</span>
-                    </li>
-                  ))}
-              </ul>
-              <input
-                style={{
-                  fontSize: "1rem",
-                }}
-                type="text"
-                placeholder="在這裡輸入訊息"
-                className={styles.messageInput}
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-            </div>
-          )}
-          {savedPlaylists.length > 0 && !immersiveMode && (
-            <div
-              className={styles.savedPlaylistsContainer}
-              style={{
-                width: "100%",
-              }}
-            >
-              <a>已儲存的播放清單 (點擊以載入)</a>
-              {savedPlaylists.map((pl) => (
-                <div key={pl.id} className={styles.savedPlaylistItem}>
-                  <span
-                    className={styles.button}
-                    onClick={() => loadSavedPlaylist(pl.id)}
-                  >
-                    {pl.name} - {pl.tracks.length}首單曲 (建立於:{" "}
-                    {new Date(pl.createdAt).toLocaleString()})
-                  </span>
-                  <button
-                    className={styles.button}
-                    style={{ outlineColor: "#F95454", color: "#F95454" }}
-                    onClick={() => deleteSavedPlaylist(pl.id)}
-                  >
-                    刪除
-                  </button>
-                </div>
-              ))}
-            </div>
           )}
         </div>
       </div>

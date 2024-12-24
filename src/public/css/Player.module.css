@@ -70,21 +70,33 @@
 }
 
 .loggerContainer {
+  flex: 1;
   position: relative;
-  bottom: 0;
-  left: 0;
+  justify-content: space-between;
   display: flex;
   flex-direction: column;
   margin: 10px;
   padding: 10px;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
-  max-height: 300px; /* 設置最大高度 */
+  max-height: 20vh; /* 設置最大高度 */
   text-align: left; /* 文字靠左 */
-  width: 100%; /* 寬度跟隨父元素 */
   box-sizing: border-box; /* 包含 padding 和 border */
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
+}
+
+.loggerContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.loggerContainer::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+.loggerContainer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 
@@ -112,14 +124,30 @@
 }
 
 .savedPlaylistsContainer {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 10px;
-  padding: 20px;
+  margin: 10px;
+  padding: 10px;
   border-radius: 10px;
+  max-height: 280px; /* 設置最大高度 */
   outline: 2px solid var(--fallback-bc);
-  min-height: min-content;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+.savedPlaylistsContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.savedPlaylistsContainer::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+.savedPlaylistsContainer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .savedPlaylistItem {
@@ -127,14 +155,14 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 30px;
   padding: 10px;
   border-radius: 10px;
   background-color: var(--bc);
-  margin-top: 10px;
 }
 
 .messageInput {
-  background: none;
+  background: var(--fallback-bg);
   border: none;
   border-radius: 5px;
   color: var(--fallback-bc);
@@ -289,14 +317,13 @@
 }
 
 .button {
+  font-size: 1.1rem;
   flex-shrink: 0; /* 防止按鈕被壓縮 */
   white-space: nowrap; /* 防止文字換行 */
-  background: none;
+  background: var(--fallback-bg);
   border-radius: 10px;
   color: var(--fallback-bc);
-  font-size: calc(7.5px + 0.5vw);
-  padding: calc(2px + 0.5vw) calc(3px + 0.5vw) calc(2px + 0.5vw)
-    calc(3px + 0.5vw);
+  padding: 10px;
   border: none;
   cursor: pointer;
   user-select: none;
@@ -319,22 +346,17 @@
 }
 
 .playerContainer {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  margin-right: 5vw;
-  margin-top: 30px;
-  padding: 45px 45px 0 45px;
+  justify-content: center;
+  margin: 10px;
+  padding: 10px;
   position: relative;
   overflow: hidden;
   background: none;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
-  max-width: 100vw;
-
-  /* 固定寬高或設置比例 */
-  width: 640px; /* 固定寬度 */
-  height: 645px; /* 固定高度 */
-  aspect-ratio: 16 / 9; /* 或者使用比例布局 */
 }
 
 .placeholder {
@@ -462,9 +484,6 @@
 
 
 .playerContainer iframe {
-  width: 100%; /* 填滿容器寬度 */
-  height: 100%; /* 填滿容器高度 */
-  aspect-ratio: 16 / 9; /* 16:9 比例 */
   border: none; /* 移除邊框 */
   border-radius: 5px;
   pointer-events: none !important;
@@ -562,13 +581,12 @@
 }
 
 .playlistContainer {
-  max-width: 40vw;
-  margin: 30px 10px 0 30px;
-  padding: 20px;
+  flex: 1;
+  margin: 10px;
+  padding: 10px;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
   overflow-y: scroll;
-  height: 650px;
 }
 
 .playlistContainer::-webkit-scrollbar {
@@ -585,7 +603,7 @@
 }
 
 .playlistContainer h1 {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
 }
 
 .playlistContainer ul {
