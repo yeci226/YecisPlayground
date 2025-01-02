@@ -1,276 +1,242 @@
 import Head from "next/head";
 import { useEffect, useState, useRef, useCallback } from "react";
-import ReactPlayer from "react-player";
+import { useRouter } from "next/router";
 import styles from "../../public/css/Player.module.css";
 import { v4 as uuidv4 } from "uuid";
-import { useRouter } from "next/router";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
-dotenv.config();
+import ReactPlayer from "react-player";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 export default function Player() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   const { id } = router.query;
-  const [animate, setAnimate] = useState(false);
+  const socketRef = useRef(null);
   const [inputValue, setInputValue] = useState("");
-  const [audioSrc, setAudioSrc] = useState("");
-  const [playing, setPlaying] = useState(false);
-  const playerRef = useRef(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [messageInput, setMessageInput] = useState("");
+  const [users, setUsers] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.1);
   const [playlist, setPlaylist] = useState([]);
-  const [currentTrackId, setCurrentTrackId] = useState(null);
-  const [repeatMode, setRepeatMode] = useState("playlist");
+  const [currentTrack, setCurrentTrack] = useState(null);
   const [savedPlaylists, setSavedPlaylists] = useState([]);
-
+  const [immersiveMode, setImmersiveMode] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [playbackState, setPlaybackState] = useState({
+    playing: false,
+    volume: 0.1,
+    progress: 0,
+    initialSync: false,
+  });
+  const playerRef = useRef(null);
   const timePercentage = (currentTime / duration) * 100;
-  const volumePercentage = volume * 100;
-  const text = "我們一起播放音樂吧！";
 
-  useEffect(() => {
-    const handleError = (event) => {
-      console.error("未捕獲的錯誤:", event.error);
-    };
+  const getRecommendedTracks = async (trackUrl) => {
+    try {
+      const response = await fetch(`/api/getInfo?url=${trackUrl}`);
+      const recommendation = await response.json();
 
-    window.addEventListener("error", handleError);
-    return () => window.removeEventListener("error", handleError);
-  }, []);
+      // 過濾重複的歌曲
+      const uniqueRecommendations = recommendation.filter(
+        (track) => !playlist.some((plTrack) => plTrack.id === track.id)
+      );
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimate((prev) => !prev);
-    }, text.length * 150);
-
-    return () => clearInterval(interval);
-  }, [text.length]);
-
-  useEffect(() => {
-    if (!id) return;
-
-    const syncRoomState = async () => {
-      if (!id) return;
-      try {
-        const response = await fetch(`/api/room/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch room data");
-        const data = await response.json();
-
-        console.log("同步房間數據:", data);
-
-        // 更新播放列表
-        if (JSON.stringify(data.playlist) !== JSON.stringify(playlist)) {
-          setPlaylist(data.playlist);
-        }
-
-        // 更新当前曲目
-        const currentTrack = data.currentTrack;
-        if (
-          currentTrack.id !== currentTrackId ||
-          currentTrack.playing !== playing
-        ) {
-          setCurrentTrackId(currentTrack.id);
-          setPlaying(currentTrack.playing);
-          const track = data.playlist.find((t) => t.id === currentTrack.id);
-          if (track) setAudioSrc(track.url);
-        }
-
-        setRepeatMode(repeatMode || "none");
-
-        if (playerRef.current && currentTrack.id === currentTrackId) {
-          const serverCurrentTime =
-            currentTrack.currentTime +
-            (Date.now() - currentTrack.lastUpdatedAt) / 1000;
-          const currentPlayerTime = playerRef.current.getCurrentTime();
-          if (Math.abs(serverCurrentTime - currentPlayerTime) > 2) {
-            playerRef.current.seekTo(serverCurrentTime);
-          }
-        }
-      } catch (error) {
-        console.error("同步房間狀態失敗:", error);
-      }
-    };
-
-    syncRoomState();
-
-    const intervalId = setInterval(syncRoomState, 15000);
-
-    return () => clearInterval(intervalId);
-  }, [id, currentTrackId, playing]);
-
-  const handleProgress = () => {
-    if (playerRef.current) {
-      const time = playerRef.current.getCurrentTime();
-      const duration = playerRef.current.getDuration();
-      setCurrentTime(time || 0);
-      setDuration(duration || 0);
+      return uniqueRecommendations;
+    } catch (error) {
+      console.error("獲取推薦歌曲失敗：", error);
+      return [];
     }
   };
 
-  const updateCurrentTrack = useCallback(
-    async (trackId, playStatus, resetTime = false) => {
-      if (!id) return;
-      try {
-        const currentTime =
-          resetTime || !playerRef.current
-            ? 0
-            : playerRef.current.getCurrentTime();
-
-        console.log("房間ID:", id);
-        console.log("更新當前曲目:", { trackId, playStatus, currentTime });
-
-        const response = await fetch(`/api/room/${id}/currentTrack`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentTrack: {
-              id: trackId,
-              playing: playStatus,
-              currentTime,
-              lastUpdatedAt: Date.now(),
-            },
-            repeatMode,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("無法更新當前曲目");
-        }
-
-        console.log("成功更新當前曲目:", { trackId, playStatus });
-      } catch (error) {
-        console.error("更新當前曲目失敗:", error);
-      }
-    },
-    [id, repeatMode]
-  );
-
-  const updatePlaylist = (newPlaylist) => {
-    setPlaylist(newPlaylist);
+  const handleSetAutoPlay = () => {
+    const newAutoPlayState = !autoPlay;
+    setAutoPlay(newAutoPlayState);
+    sendMessage("updateTrack", {
+      messageType: "setAutoPlay",
+      currentTrack: {
+        ...currentTrack,
+        progress: currentTrack.progress,
+      },
+      playing: playbackState.playing,
+      autoPlay: newAutoPlayState,
+    });
   };
 
-  const Playlist = ({
-    playlist,
-    currentTrackId,
-    selectTrack,
-    handleRemoveTrack,
-    updatePlaylist,
-  }) => {
-    const handleDragStart = (event, index) => {
-      event.dataTransfer.setData("trackIndex", index);
-    };
+  const deleteSavedPlaylist = (playlistId) => {
+    try {
+      const confirmed = window.confirm("確定要刪除這個播放清單嗎？");
+      if (confirmed) {
+        const updatedPlaylists = savedPlaylists.filter(
+          (pl) => pl.id !== playlistId
+        );
+        localStorage.setItem(
+          "savedPlaylists",
+          JSON.stringify(updatedPlaylists)
+        );
+        setSavedPlaylists(updatedPlaylists);
+      }
+    } catch (error) {
+      console.error("刪除播放清單時發生錯誤:", error);
+      alert("刪除播放清單失敗");
+    }
+  };
 
-    const handleDragOver = (event) => {
-      event.preventDefault();
-    };
+  // Memoize socket connection logic
+  const connectWebSocket = useCallback(() => {
+    if (!id) {
+      const newRoomId = uuidv4();
+      router.push(`/player?id=${newRoomId}`);
+    }
 
-    const handleDrop = (event, dropIndex) => {
-      const draggedIndex = parseInt(
-        event.dataTransfer.getData("trackIndex"),
-        10
+    try {
+      const ws = new WebSocket(
+        "wss://c698-2001-df2-45c1-18-00-1.ngrok-free.app/"
       );
 
-      if (draggedIndex === dropIndex) return;
+      ws.onopen = () => {
+        console.log(`Connected to room ${id}`);
+        ws.send(
+          JSON.stringify({
+            type: "joinRoom",
+            roomId: id,
+            timestamp: new Date().toLocaleTimeString(),
+            userName: localStorage.getItem("userName"),
+            userId: localStorage.getItem("userId"),
+          })
+        );
+        setIsLoading(false);
+      };
 
-      const updatedPlaylist = [...playlist];
-      const [draggedTrack] = updatedPlaylist.splice(draggedIndex, 1);
-      updatedPlaylist.splice(dropIndex, 0, draggedTrack);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
 
-      updatePlaylist(updatedPlaylist);
-    };
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setIsLoading(false);
+      };
 
-    return (
-      <ul>
-        {playlist.map((track, index) => (
-          <li
-            key={track.id}
-            draggable // 啟用拖放
-            onDragStart={(event) => handleDragStart(event, index)}
-            onDragOver={handleDragOver}
-            onDrop={(event) => handleDrop(event, index)}
-            onClick={() => selectTrack(index)}
-            className={`${styles.trackElement} ${
-              track.id === currentTrackId ? styles.active : styles.inactive
-            }`}
-            style={{
-              position: "relative",
-              color: track.id === currentTrackId ? "#86AB89" : "grey",
-              cursor: track.id === currentTrackId ? "default" : "pointer",
-            }}
-          >
-            <>
-              {track.id === currentTrackId ? (
-                <button
-                  className={styles.removeButton}
-                  style={{ cursor: "default" }}
-                >
-                  🎵
-                </button>
-              ) : (
-                <button
-                  className={styles.removeButton}
-                  onClick={(event) => handleRemoveTrack(event, track.id)}
-                >
-                  ❌
-                </button>
-              )}
-            </>
-            {track.thumbnail && (
-              <img
-                src={track.thumbnail}
-                alt={track.title}
-                className={styles.thumbnail}
-              />
-            )}
-            <span
-              style={{
-                marginRight: "5px",
-                overflow: "hidden",
-              }}
-            >
-              {track.title}
-            </span>
-            <span className={styles.addedBy}>Added by: {track.addedBy}</span>
-            <span
-              className={styles.dragHandle}
-              style={{
-                cursor: "grab",
-                userSelect: "none",
-                color: "grey",
-                fontSize: "1.2rem",
-                marginLeft: "auto",
-              }}
-            >
-              ⋮
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
+      ws.onclose = () => {
+        console.log(`Disconnected from room ${id}`);
+        setIsLoading(false);
+      };
+
+      return ws;
+    } catch (error) {
+      console.error("WebSocket connection failed:", error);
+      setIsLoading(false);
+      return null;
+    }
+  }, [id, router]);
+
+  const toggleImmersiveMode = () => {
+    setImmersiveMode(!immersiveMode);
   };
 
-  const selectTrack = useCallback(
-    (index) => {
-      if (index < 0 || index >= playlist.length) {
-        console.error("無效的音軌索引:", index);
-        return;
-      }
+  // Send message to WebSocket server
+  const sendMessage = useCallback((type, payload) => {
+    if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type,
+          timestamp: new Date().toLocaleTimeString(),
+          ...payload,
+        })
+      );
+    }
+  }, []);
 
-      const track = playlist[index];
-      if (track) {
-        setAudioSrc(track.url);
-        setPlaying(true);
-        setCurrentTrackId(track.id);
-        updateCurrentTrack(track.id, true, true);
+  // Handle different WebSocket message types
+  const handleWebSocketMessage = useCallback(
+    (data) => {
+      switch (data.type) {
+        case "roomState":
+          setPlaylist(data.playlist || []);
+          setCurrentTrack(data.currentTrack || null);
+          setPlaybackState((prev) => ({
+            ...prev,
+            playing: data.playing || false,
+            progress: data.currentTrack?.progress || 0,
+          }));
+          setUsers(data.users || []);
 
-        // 如果音軌相同，則重置播放進度
-        if (track.url === audioSrc) playerRef.current.seekTo(0);
+          // if (
+          //   data.playing &&
+          //   data.currentTrack &&
+          //   data.currentTrack.progress > 0
+          // ) {
+          //   console.log("Resuming playback...");
+          //   const currentTrack = data.currentTrack;
+          //   const newProgress = data.currentTrack.progress;
+          //   console.log("New progress:", newProgress);
+          //   setCurrentTrack(currentTrack);
+          //   setPlaybackState((prev) => ({ ...prev, progress: newProgress }));
+          //   if (playerRef.current) {
+          //     playerRef.current.seekTo(newProgress, "fraction");
+          //   }
+          // }
+          break;
+        case "updatePlaylist":
+          setPlaylist(data.playlist || []);
+          break;
+        case "updateTrack":
+          setCurrentTrack(data.currentTrack || null);
+          setPlaybackState((prev) => ({
+            ...prev,
+            playing: data.playing || false,
+            progress: data.currentTrack?.progress || 0,
+          }));
+          break;
 
-        console.log(`已切換至曲目: ${track.title}`);
+        case "userJoined":
+          setUsers(data.users || []);
+          if (data.autoPlay && playlist.length > 0) {
+            setPlaybackState((prev) => ({ ...prev, playing: true }));
+            sendMessage("updateTrack", { playing: true });
+          }
+          break;
+
+        case "userLeft":
+          setUsers(data.users || []);
+          break;
+
+        case "logAction":
+          setLogs(data.logs || []);
+          break;
+
+        default:
+          console.error("Unknown WebSocket message type:", data.type);
       }
     },
-    [playlist, updateCurrentTrack, playerRef]
+    [playlist, sendMessage]
   );
 
+  // 更新播放順序的函數
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const reorderedPlaylist = Array.from(playlist);
+    const [movedItem] = reorderedPlaylist.splice(result.source.index, 1);
+    reorderedPlaylist.splice(result.destination.index, 0, movedItem);
+
+    setPlaylist(reorderedPlaylist);
+    sendMessage("updatePlaylist", {
+      messageType: "changeTrack",
+      movedItem: movedItem.title,
+      moveTo: result.destination.index + 1,
+      playlist: reorderedPlaylist,
+    });
+  };
+
+  // 儲存歌單
   const savePlaylist = () => {
     try {
       const playlistName = prompt("請輸入播放清單名稱:");
@@ -311,508 +277,894 @@ export default function Player() {
     }
   }, []);
 
-  const deleteSavedPlaylist = (playlistId) => {
-    try {
-      const confirmed = window.confirm("確定要刪除這個播放清單嗎？");
-      if (confirmed) {
-        const updatedPlaylists = savedPlaylists.filter(
-          (pl) => pl.id !== playlistId
-        );
-        localStorage.setItem(
-          "savedPlaylists",
-          JSON.stringify(updatedPlaylists)
-        );
-        setSavedPlaylists(updatedPlaylists);
+  // Establish WebSocket connection
+  useEffect(() => {
+    if (router.isReady) {
+      if (!localStorage.getItem("userId")) {
+        const userId = uuidv4();
+        localStorage.setItem("userId", userId);
       }
-    } catch (error) {
-      console.error("刪除播放清單時發生錯誤:", error);
-      alert("刪除播放清單失敗");
-    }
-  };
+      if (!localStorage.getItem("userName")) {
+        const userName = prompt("請輸入你的使用者名稱:");
+        if (!userName || userName.length > 16)
+          return alert("使用者名稱長度不可超過16個字元");
+        localStorage.setItem("userName", userName);
+      }
+      const ws = connectWebSocket();
+      socketRef.current = ws;
 
-  const loadSavedPlaylist = async (playlistId) => {
-    try {
-      const savedPlaylist = savedPlaylists.find((pl) => pl.id === playlistId);
-      if (!savedPlaylist) return;
-
-      const initializePlayback = (tracks) => {
-        if (!currentTrackId && tracks.length > 0) {
-          const firstTrack = tracks[0];
-          setAudioSrc(firstTrack.url);
-          setCurrentTrackId(firstTrack.id);
-          setPlaying(true);
-        }
-        updateCurrentTrack(tracks[0]?.id, true);
+      return () => {
+        if (ws) ws.close();
       };
-
-      const handleDuplicateTracks = (newTracks, currentTracks) => {
-        return newTracks.map((track) => {
-          const isDuplicate = currentTracks.some((t) => t.id === track.id);
-          if (isDuplicate) {
-            return { ...track, id: uuidv4() };
-          }
-          return track;
-        });
-      };
-
-      if (savedPlaylist.tracks.length === 0) {
-        setPlaylist(savedPlaylist.tracks);
-        initializePlayback(savedPlaylist.tracks);
-        return;
-      }
-
-      const confirmed = window.confirm(
-        "是否要插入這個播放清單到當前播放清單？"
-      );
-
-      if (confirmed) {
-        const uniqueTracks = handleDuplicateTracks(
-          savedPlaylist.tracks,
-          playlist
-        );
-        const newPlaylist = [...playlist, ...uniqueTracks];
-        setPlaylist(newPlaylist);
-        initializePlayback(newPlaylist);
-      }
-    } catch (error) {
-      console.error("載入播放清單時發生錯誤:", error);
-      alert("載入播放清單失敗");
     }
-  };
+  }, [router.isReady, connectWebSocket]);
 
-  const toggleRepeatMode = async () => {
-    const newMode =
-      repeatMode === "none"
-        ? "single"
-        : repeatMode === "single"
-        ? "playlist"
-        : "none";
-
-    setRepeatMode(newMode);
-
-    try {
-      // 立即更新房間的重複模式
-      await fetch(`/api/room/${id}/repeatMode`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repeatMode: newMode }),
-      });
-    } catch (error) {
-      console.error("同步循環模式失敗:", error);
-    }
-  };
-
-  const playNextTrack = async () => {
-    if (playlist.length === 0) return;
-
-    const currentIndex = playlist.findIndex(
-      (track) => track.id === currentTrackId
-    );
-
-    let nextTrack;
-    if (repeatMode === "single") {
-      nextTrack = playlist[currentIndex];
-    } else if (repeatMode === "playlist") {
-      nextTrack = playlist[(currentIndex + 1) % playlist.length];
-    } else {
-      nextTrack = playlist[currentIndex + 1] || null;
-    }
-
-    if (nextTrack) {
-      setAudioSrc(nextTrack.url);
-      setPlaying(true);
-      setCurrentTrackId(nextTrack.id);
-
-      await updateCurrentTrack(nextTrack.id, true, true);
-    } else {
-      setPlaying(false);
-      await updateCurrentTrack(currentTrackId, false);
-    }
-  };
-
-  const playPreviousTrack = async () => {
-    if (playlist.length === 0) return;
-
-    const currentIndex = playlist.findIndex(
-      (track) => track.id === currentTrackId
-    );
-
-    let prevTrack;
-    if (repeatMode === "single") {
-      prevTrack = playlist[currentIndex];
-    } else if (repeatMode === "playlist") {
-      prevTrack =
-        currentIndex - 1 >= 0
-          ? playlist[currentIndex - 1]
-          : playlist[playlist.length - 1];
-    } else {
-      prevTrack = currentIndex - 1 >= 0 ? playlist[currentIndex - 1] : null;
-    }
-
-    if (prevTrack) {
-      setAudioSrc(prevTrack.url);
-      setPlaying(true);
-      setCurrentTrackId(prevTrack.id);
-
-      await updateCurrentTrack(prevTrack.id, true, true);
-    }
-  };
-
-  const playRandomTrack = async () => {
-    if (playlist.length > 0) {
-      let randomTrack;
-      do {
-        randomTrack = playlist[Math.floor(Math.random() * playlist.length)];
-      } while (randomTrack.id === currentTrackId);
-
-      setAudioSrc(randomTrack.url);
-      setPlaying(true);
-      setCurrentTrackId(randomTrack.id);
-      await updateCurrentTrack(randomTrack.id, true);
-    }
-  };
-
-  const togglePlayPause = async () => {
-    const newPlayingStatus = !playing;
-    setPlaying(newPlayingStatus);
-    await updateCurrentTrack(currentTrackId, newPlayingStatus);
-  };
-
-  const handleLinkChange = (event) => {
-    setInputValue(event.target.value);
-  };
-
-  const handleLinkSubmit = useCallback(async () => {
-    if (!inputValue) return;
-    if (!ReactPlayer.canPlay(inputValue)) {
-      alert(`無法播放此連結\n${inputValue}`);
-      setInputValue("");
-      return;
-    }
-
-    if (!localStorage.getItem("userName")) {
-      const userName = prompt("請輸入你的使用者名稱:");
-      if (userName) localStorage.setItem("userName", userName);
-    }
-
-    if (!id) {
-      try {
-        const response = await fetch("/api/createRoom", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await response.json();
-        if (data.roomId) {
-          router.push(`/player?id=${data.roomId}`);
-        } else {
-          throw new Error("Failed to create room");
-        }
-      } catch (error) {
-        console.error("創建房間失敗:", error);
-        return;
-      }
-    }
-
-    try {
-      const newTrackData = await fetch(
-        `https://noembed.com/embed?dataType=json&url=${inputValue}`
-      ).then((res) => res.json());
-      const newTrack = {
-        id: uuidv4(),
-        url: inputValue,
-        title: newTrackData.title || "未知歌曲",
-        thumbnail: newTrackData.thumbnail_url || null,
-        addedBy:
-          localStorage.getItem("userName") ||
-          localStorage.getItem("userId").slice(0, 8),
-      };
-
-      const newPlaylist = [...playlist, newTrack];
-      setPlaylist(newPlaylist);
-
-      await fetch(`/api/room/${id}/playlist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playlist: newPlaylist }),
-      });
-
-      if (playlist.length === 0) {
-        setAudioSrc(newTrack.url);
-        setPlaying(true);
-        setCurrentTrackId(newTrack.id);
-      }
-    } catch (error) {
-      console.error("添加歌曲失敗:", error);
-    } finally {
-      setInputValue("");
-    }
-  }, [id, inputValue, playlist]);
-
-  const handleRemoveTrack = async (event, trackId) => {
+  const handleRemoveTrack = useCallback(async (event, trackId) => {
     event.stopPropagation();
-
+    const trackName = playlist.find((track) => track.id === trackId)?.title;
     const updatedPlaylist = playlist.filter((track) => track.id !== trackId);
     setPlaylist(updatedPlaylist);
+    sendMessage("updatePlaylist", {
+      messageType: "",
+      trackName,
+      playlist: updatedPlaylist,
+    });
+  });
 
-    if (trackId === currentTrackId) {
-      const newCurrentTrack = updatedPlaylist[0] || {};
-      setAudioSrc(newCurrentTrack.url || "");
-      setCurrentTrackId(newCurrentTrack.id || null);
-      updateCurrentTrack(newCurrentTrack.id || null, false);
+  const handleSendMessage = () => {
+    if (messageInput.trim()) {
+      let message = messageInput.trim();
+      if (message.length > 200) message = message.slice(0, 200);
+
+      sendMessage("messageAction", {
+        timestamp: new Date().toLocaleTimeString(),
+        message,
+      });
+      setMessageInput("");
+    }
+  };
+
+  // 監聽 Enter 鍵
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault(); // 防止換行
+      handleSendMessage(); // 發送訊息
+    }
+  };
+
+  function generateUniqueId(baseId, playlist) {
+    let uniqueId = baseId;
+    let counter = 1;
+
+    // 检查是否存在相同 ID，如果有则尝试新的 ID
+    while (playlist.some((item) => item.id === uniqueId)) {
+      uniqueId = `${baseId}${counter}`;
+      counter++;
     }
 
-    await fetch(`/api/room/${id}/playlist`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playlist: updatedPlaylist }),
+    return uniqueId;
+  }
+
+  // Add new track to playlist
+  const handleLinkSubmit = useCallback(
+    async (trackUrl = inputValue.trim()) => {
+      if (!trackUrl) return;
+      if (!ReactPlayer.canPlay(trackUrl)) {
+        alert(`無法播放此連結\n${trackUrl}`);
+        setInputValue("");
+        return;
+      }
+
+      try {
+        if (trackUrl.includes("playlist?")) {
+          const response = await fetch(`/api/playlist?url=${trackUrl}`);
+          const playlistData = await response.json();
+
+          const newTracks = playlistData.songs.map((item) => {
+            const uniqueId = generateUniqueId(item.id, playlist);
+
+            return {
+              id: uniqueId,
+              url: item.url,
+              title: item.title,
+              thumbnail: item.thumbnail,
+              authorName: item.authorName,
+              addedBy:
+                localStorage.getItem("userName") ||
+                localStorage.getItem("userId").slice(0, 8),
+            };
+          });
+
+          const updatedPlaylist = [...playlist, ...newTracks];
+          setPlaylist(updatedPlaylist);
+
+          sendMessage("updatePlaylist", {
+            messageType: "addPlaylist",
+            playlistName: playlistData.name,
+            playlistLength: playlistData.songs.length,
+            playlist: updatedPlaylist,
+          });
+
+          if (playlist.length == 0) {
+            const firstTrack = newTracks[0];
+            setCurrentTrack(firstTrack);
+            setPlaybackState((prev) => ({ ...prev, playing: true }));
+            sendMessage("updateTrack", {
+              messageType: "addTrack",
+              currentTrack: { ...firstTrack, progress: 0 },
+              playing: true,
+            });
+          }
+        } else {
+          const newTrackData = await fetch(
+            `https://noembed.com/embed?dataType=json&url=${trackUrl}`
+          ).then((res) => res.json());
+
+          const videoId = new URL(trackUrl).searchParams.get("v");
+
+          const newTrack = {
+            id: generateUniqueId(videoId, playlist),
+            url: trackUrl,
+            title: newTrackData.title || `未知曲目 ${playlist.length + 1}`,
+            thumbnail: newTrackData.thumbnail_url || null,
+            authorName: newTrackData.author_name || null,
+            addedBy:
+              localStorage.getItem("userName") ||
+              localStorage.getItem("userId").slice(0, 8),
+          };
+
+          const updatedPlaylist = [...playlist, newTrack];
+          setPlaylist(updatedPlaylist);
+          sendMessage("updatePlaylist", {
+            messageType: "addTrack",
+            trackName: newTrack.title,
+            playlist: updatedPlaylist,
+          });
+
+          if (playlist.length == 0) {
+            setCurrentTrack(newTrack);
+            setPlaybackState((prev) => ({ ...prev, playing: true }));
+            sendMessage("updateTrack", {
+              currentTrack: { ...newTrack, progress: 0 },
+              playing: true,
+            });
+          }
+        }
+
+        setInputValue("");
+      } catch (error) {
+        console.error("Failed to add track:", error);
+      }
+    },
+    [inputValue, playlist, sendMessage]
+  );
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${hours > 0 ? `${hours}:` : ""}${
+      minutes < 10 && hours > 0 ? `0${minutes}` : minutes
+    }:${secs < 10 ? `0${secs}` : secs}`;
+  };
+
+  // Change current track
+  const handleTrackChange = useCallback(
+    (trackId) => {
+      const track = playlist.find((t) => t.id == trackId);
+      if (track) {
+        if (currentTrack && currentTrack.url == track.url)
+          playerRef.current.seekTo(0);
+
+        setCurrentTrack(track);
+        setPlaybackState((prev) => ({ ...prev, playing: true }));
+        sendMessage("updateTrack", {
+          messageType: "changeTrack",
+          currentTrack: { ...track, progress: 0 },
+          playing: true,
+        });
+      }
+    },
+    [playlist, sendMessage]
+  );
+
+  // Toggle play/pause
+  const togglePlayPause = () => {
+    const newPlayingState = !playbackState.playing;
+    sendMessage("updateTrack", {
+      messageType: "pauseTrack",
+      currentTrack: {
+        ...currentTrack,
+        progress: currentTrack.progress,
+      },
+      playing: newPlayingState,
     });
   };
 
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+  // Handle playback progress
+  const handleProgress = () => {
+    if (playerRef.current) {
+      const time = playerRef.current.getCurrentTime();
+      const duration = playerRef.current.getDuration();
+      setCurrentTime(time || 0);
+      setDuration(duration || 0);
+    }
+
+    if (playbackState.playing && currentTrack) {
+      const newProgress = currentTime;
+      setPlaybackState((prev) => ({ ...prev, progress: newProgress }));
+
+      // sendMessage("updateCurrentTrack", {
+      //   currentTrack: { ...currentTrack, progress: newProgress },
+      //   playing: true,
+      // });
+    }
   };
+
+  const playNextTrack = useCallback(async () => {
+    if (!playlist || playlist.length === 0) return;
+
+    const currentTrackIndex = playlist.findIndex(
+      (track) => track.id === currentTrack.id
+    );
+
+    if (currentTrackIndex === playlist.length - 1 && autoPlay) {
+      const recommendedTracks = await getRecommendedTracks(currentTrack.url);
+      if (recommendedTracks.length > 0) {
+        const newTracks = recommendedTracks.map((track) => ({
+          ...track,
+          addedBy: "系統推薦",
+        }));
+        const updatedPlaylist = [...playlist, ...newTracks];
+        setPlaylist(updatedPlaylist);
+
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: "推薦歌曲",
+          playlistLength: newTracks.length,
+          playlist: updatedPlaylist,
+        });
+
+        const nextTrack = newTracks[0];
+        setCurrentTrack(nextTrack);
+        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+        sendMessage("updateTrack", {
+          currentTrack: { ...nextTrack, progress: 0 },
+          playing: true,
+        });
+      } else {
+        console.error("無法獲取推薦歌曲");
+      }
+    } else {
+      const nextTrack = playlist[(currentTrackIndex + 1) % playlist.length];
+      if (nextTrack) {
+        if (currentTrack && currentTrack.url == nextTrack.url)
+          playerRef.current.seekTo(0);
+
+        setCurrentTrack(nextTrack);
+        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+        sendMessage("updateTrack", {
+          currentTrack: { ...nextTrack, progress: 0 },
+          playing: true,
+        });
+      }
+    }
+  }, [playlist, currentTrack, autoPlay, getRecommendedTracks, sendMessage]);
+
+  const shufflePlaylist = () => {
+    const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
+    setPlaylist(shuffledPlaylist);
+    sendMessage("updatePlaylist", {
+      messageType: "shufflePlaylist",
+      playlist: shuffledPlaylist,
+    });
+  };
+
+  const loadSavedPlaylist = (playlistId) => {
+    try {
+      // 取得保存的播放清單
+      const savedPlaylists = JSON.parse(
+        localStorage.getItem("savedPlaylists") || "[]"
+      );
+      const selectedPlaylist = savedPlaylists.find(
+        (pl) => pl.id === playlistId
+      );
+
+      if (!selectedPlaylist) {
+        alert(`播放清單 ID: ${playlistId} 未找到！`);
+        return;
+      }
+
+      if (!selectedPlaylist.tracks || selectedPlaylist.tracks.length === 0) {
+        alert(`播放清單 "${selectedPlaylist.name}" 沒有歌曲！`);
+        return;
+      }
+
+      const handleInsertPlaylist = (newTracks) => {
+        const updatedPlaylist = [...playlist, ...newTracks];
+        setPlaylist(updatedPlaylist);
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: selectedPlaylist.name,
+          playlistLength: selectedPlaylist.tracks.length,
+          playlist: updatedPlaylist,
+        });
+      };
+
+      if (playlist.length == 0) {
+        // 當前播放清單為空，直接載入
+        const firstTrack = selectedPlaylist.tracks[0];
+        setCurrentTrack(firstTrack);
+        setPlaybackState((prev) => ({ ...prev, playing: true }));
+        setPlaylist(selectedPlaylist.tracks);
+        sendMessage("updateTrack", {
+          messageType: "addTrack",
+          currentTrack: { ...firstTrack, progress: 0 },
+          playing: true,
+        });
+        sendMessage("updatePlaylist", {
+          messageType: "addPlaylist",
+          playlistName: selectedPlaylist.name,
+          playlistLength: selectedPlaylist.tracks.length,
+          playlist: selectedPlaylist.tracks,
+        });
+      } else {
+        // 當前播放清單非空，要求確認插入
+        const confirmed = confirm("當前播放清單將新增此播放清單，是否繼續？");
+        if (confirmed) handleInsertPlaylist(selectedPlaylist.tracks);
+      }
+    } catch (error) {
+      console.error("載入播放清單時發生錯誤:", error);
+      alert("載入播放清單失敗，請稍後重試！");
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!inputValue.trim() || isSearching || cooldown > 0) return;
+
+    // if input is a URL, use handleLinkSubmit
+    if (ReactPlayer.canPlay(inputValue)) {
+      handleLinkSubmit();
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `/api/search?keyword=${encodeURIComponent(inputValue)}`
+      );
+      const data = await response.json();
+      setSearchResults(data || []);
+    } catch (error) {
+      console.error("搜尋失敗：", error);
+      alert("搜尋失敗，請稍後再試！");
+    } finally {
+      setIsSearching(false);
+      startCooldown(2);
+    }
+  };
+
+  const startCooldown = (seconds) => {
+    setCooldown(seconds);
+    const interval = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const clearPlaylist = () => {
+    const confirmed = window.confirm("確定要清空播放清單嗎？");
+    if (confirmed) {
+      setPlaylist([]);
+      setCurrentTrack(null);
+      setPlaybackState((prev) => ({ ...prev, playing: false }));
+      sendMessage("updatePlaylist", {
+        messageType: "clearPlaylist",
+        playlist: [],
+      });
+    }
+  };
+
+  // Render loading state
+  if (isLoading) {
+    return <div>正在載入房間資訊...</div>;
+  }
 
   return (
     <div>
       <Head>
-        <title>野茨遊樂場 - 播放器</title>
-        <meta property="og:title" content="野茨遊樂場 - 播放器" />
-        <meta property="og:site_name" content="野茨遊樂場 - 播放器" />
-        <meta
-          property="og:description"
-          content="加入房間，與朋友共享音樂播放列表🎶"
-        />
+        <title>網路插座播放器</title>
       </Head>
 
-      <div className={styles.contentContainer}>
-        <h1 className={!audioSrc ? styles.contentLower : ""}>
-          {text.split("").map((char, index) => (
-            <span
-              key={index}
-              className={`${styles.jump} ${animate ? styles.animate : ""}`}
-              style={{ animationDelay: `${index * 0.1}s` }}
+      <div
+        className={`${styles.contentContainer} ${
+          immersiveMode ? styles.immersive : ""
+        }`}
+      >
+        {!immersiveMode && (
+          <>
+            <h1 />
+            <div
+              className={styles.audioControls}
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
             >
-              {char === " " ? "\u00A0" : char}
-            </span>
-          ))}
-        </h1>
+              <input
+                type="text"
+                placeholder="在這裡輸入名字或連結"
+                value={inputValue}
+                className={inputValue ? styles.active : ""}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !(cooldown > 0 || isSearching)) {
+                    handleSearch();
+                  }
+                }}
+              />
+              <button
+                className={styles.button}
+                onClick={handleSearch}
+                disabled={cooldown > 0 || isSearching}
+              >
+                {isSearching ? (
+                  <span className={styles.searching}>搜尋中...</span>
+                ) : cooldown > 0 ? (
+                  `冷卻中 (${cooldown})`
+                ) : (
+                  "搜尋"
+                )}
+              </button>
+            </div>
 
-        <div className={styles.audioControls}>
-          <input
-            type="text"
-            placeholder="在這裡輸入連結"
-            style={{ width: "60vw", maxWidth: "400px" }}
-            value={inputValue}
-            onChange={handleLinkChange}
-            className={inputValue ? styles.active : ""}
-          />
-          <button className={styles.button} onClick={handleLinkSubmit}>
-            添加到歌單
-          </button>
-        </div>
+            {searchResults.length > 0 && (
+              <div className={styles.searchResults}>
+                <div className={styles.searchResultsHeader}>
+                  <button
+                    className={styles.closeButton}
+                    onClick={() => setSearchResults([])}
+                  >
+                    ✖
+                  </button>
+                </div>
+                <div className={styles.searchResultsList}>
+                  {searchResults.map((track, index) => (
+                    <div key={index} className={styles.searchResultItem}>
+                      <img
+                        src={track.thumbnail}
+                        alt={track.title}
+                        className={styles.thumbnail}
+                      />
+                      <span className={styles.trackTitle}>{track.title}</span>
+                      <div className={styles.trackActions}>
+                        <button
+                          onClick={() => handleLinkSubmit(track.url)}
+                          className={styles.button}
+                          style={{
+                            outlineColor: "#86AB89",
+                            color: "#86AB89",
+                          }}
+                        >
+                          添加
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
+        {/* 中間部分 */}
         <div
           className={styles.audioControls}
-          style={{ display: "flex", gap: "10vw", flexDirection: "row" }}
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "center",
+            width: "90vw",
+            height: "75vh",
+          }}
         >
-          {audioSrc && playlist?.length > 0 && (
-            <div className={styles.playlistContainer}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  padding: "0 10px 0 10px",
-                }}
-              >
-                <h1
-                  style={{
-                    paddingTop: "0",
-                    fontSize: "calc(0.8rem + 0.6vw)",
-                  }}
-                >
-                  共用播放列表-{playlist.length}首歌曲
-                </h1>
-                <button
-                  className={styles.button}
-                  style={{
-                    outlineColor: "#F95454",
-                    color: "#F95454",
-                    height: "min-content",
-                  }}
-                  onClick={() => setPlaylist([])}
-                >
-                  清空歌單
-                </button>
-              </div>
-              <span
-                style={{
-                  fontSize: "calc(0.5rem + 0.4vw)",
-                  margin: "0 10px 0 10px",
-                  color: "##868686",
-                }}
-              >
-                可以拖移來更改播放順序
-              </span>
+          {!immersiveMode && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                minWidth: 400 /* 固定寬度 */,
+                maxWidth: "30vw" /* 固定寬度 */,
+              }}
+            >
+              {/* 歌單 */}
+              {playlist?.length > 0 && !immersiveMode && (
+                <div className={styles.playlistContainer}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <h1
+                      style={{
+                        paddingTop: "0",
+                      }}
+                    >
+                      共用播放列表-{playlist.length}首歌曲
+                    </h1>
+                    <button
+                      className={styles.button}
+                      style={{
+                        outlineColor: "#F95454",
+                        color: "#F95454",
+                        height: "min-content",
+                      }}
+                      onClick={clearPlaylist}
+                    >
+                      清空歌單
+                    </button>
+                  </div>
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="playlist">
+                      {(provided) => (
+                        <ul
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          style={{ listStyleType: "none", padding: 0 }}
+                        >
+                          {playlist.map((track, index) => (
+                            <Draggable
+                              key={track.id}
+                              draggableId={track.id}
+                              index={index}
+                            >
+                              {(provided) => (
+                                <li
+                                  key={track.id}
+                                  onClick={() => handleTrackChange(track.id)}
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`${styles.trackElement} ${
+                                    track.id === currentTrack.id
+                                      ? styles.active
+                                      : styles.inactive
+                                  }`}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                    position: "relative",
+                                    color:
+                                      track.id === currentTrack.id
+                                        ? "#86AB89"
+                                        : "grey",
+                                    cursor:
+                                      track.id === currentTrack.id
+                                        ? "default"
+                                        : "pointer",
+                                  }}
+                                >
+                                  <>
+                                    {track.id === currentTrack.id ? (
+                                      <button
+                                        className={styles.removeButton}
+                                        style={{ cursor: "default" }}
+                                      >
+                                        🎵
+                                      </button>
+                                    ) : (
+                                      <button
+                                        className={styles.removeButton}
+                                        onClick={(event) =>
+                                          handleRemoveTrack(event, track.id)
+                                        }
+                                      >
+                                        ❌
+                                      </button>
+                                    )}
+                                  </>
+                                  {track.thumbnail && (
+                                    <img
+                                      src={track.thumbnail}
+                                      alt={track.title}
+                                      className={styles.thumbnail}
+                                    />
+                                  )}
+                                  <span>{track.title}</span>
 
-              <Playlist
-                playlist={playlist}
-                currentTrackId={currentTrackId}
-                selectTrack={selectTrack}
-                handleRemoveTrack={handleRemoveTrack}
-                updatePlaylist={updatePlaylist}
-              />
+                                  <span className={styles.addedBy}>
+                                    <span
+                                      style={{
+                                        fontSize: "0.8rem",
+                                        color: "grey",
+                                      }}
+                                    >
+                                      {track.authorName
+                                        ? `${track.authorName}`
+                                        : ""}
+                                    </span>{" "}
+                                    ▪︎ {track.addedBy}
+                                  </span>
+                                </li>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </ul>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                </div>
+              )}
+
+              {/* 日誌 */}
+              {logs.length > 0 && !immersiveMode && (
+                <div className={styles.loggerContainer}>
+                  <a>房間日誌</a>
+                  <ul
+                    style={{
+                      listStyleType: "none",
+                      padding: 0,
+                      flex: 1,
+                      overflowY: "hidden",
+                    }}
+                  >
+                    {logs
+                      .slice(0)
+                      .reverse()
+                      // .filter((_, index) => index < 5)
+                      .map((log, index) => (
+                        <li key={index}>
+                          <span className={styles.logTime}>
+                            {log.timestamp}
+                          </span>{" "}
+                          <span className={styles.logMessage}>
+                            {log.message}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                  <input
+                    type="text"
+                    placeholder="在這裡輸入訊息"
+                    className={styles.messageInput}
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {audioSrc && (
-            <div className={styles.playerContainer}>
-              <>
-                <ReactPlayer
-                  ref={playerRef}
-                  url={audioSrc}
-                  playing={playing}
-                  controls={false}
-                  volume={volume}
-                  width="100%"
-                  height="100%"
-                  onProgress={handleProgress}
-                  onEnded={playNextTrack}
-                  progressInterval={500}
-                />
-
-                <div className={styles.trackInfo}>
-                  {"正在播放：".split("").map((char, index) => (
-                    <span
-                      key={index}
-                      className={`${styles.jump} ${
-                        animate ? styles.animate : ""
-                      }`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      {char === " " ? "\u00A0" : char}
-                    </span>
-                  ))}
-                  {playlist.find((track) => track.id === currentTrackId)?.title
-                    .length > 50
-                    ? playlist
-                        .find((track) => track.id === currentTrackId)
-                        ?.title.slice(0, 50) + "..."
-                    : playlist.find((track) => track.id === currentTrackId)
-                        ?.title}
-                </div>
-
-                <div className={styles.progressContainer}>
-                  <input
-                    className={styles.progressBar}
-                    type="range"
-                    min={0}
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={(e) =>
-                      playerRef.current.seekTo(parseFloat(e.target.value))
+          {((currentTrack && playlist.length > 0) ||
+            savedPlaylists.length > 0) && (
+            <div
+              style={
+                immersiveMode
+                  ? {
+                      display: "flex",
+                      flexDirection: "column",
+                      width: "100vw",
                     }
-                    disabled={true}
-                    style={{ "--value": `${timePercentage}%` }}
-                  />
-                  <div className={styles.timeDisplay}>
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+                  : {
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 600,
+                    }
+              }
+            >
+              {/* 播放器 */}
+              {currentTrack && playlist.length > 0 && (
+                <div
+                  className={`${styles.playerContainer} ${
+                    immersiveMode ? styles.huge : ""
+                  }`}
+                  style={immersiveMode ? { display: "block" } : {}}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      position: "relative",
+                      height: "100%",
+                    }}
+                  >
+                    <ReactPlayer
+                      ref={playerRef}
+                      url={currentTrack.url}
+                      playing={playbackState.playing}
+                      volume={playbackState.volume}
+                      onProgress={handleProgress}
+                      onEnded={playNextTrack}
+                      controls={false}
+                      width="100%"
+                      height="100%"
+                      progressInterval={500}
+                    />
                   </div>
-                </div>
 
-                {audioSrc && playlist?.length > 0 && (
+                  <div className={styles.trackInfo}>
+                    {immersiveMode &&
+                      `#${
+                        playlist.findIndex(
+                          (track) => track.id == currentTrack?.id
+                        ) + 1
+                      } - `}
+                    {
+                      playlist.find((track) => track.id == currentTrack?.id)
+                        ?.title
+                    }
+                  </div>
+
+                  <div className={styles.progressContainer}>
+                    <div className={styles.timeDisplay}>
+                      {immersiveMode ? (
+                        <span>
+                          {formatTime(currentTime)} / {formatTime(duration)}
+                        </span>
+                      ) : (
+                        <>
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      className={styles.progressBar}
+                      type="range"
+                      min={0}
+                      max={duration || 0}
+                      value={currentTime}
+                      disabled={true}
+                      style={{ "--value": `${timePercentage}%` }}
+                    />
+                  </div>
+
                   <div className={styles.controlPanel}>
                     <button
                       className={styles.button}
-                      onClick={savePlaylist}
-                      title="儲存當前播放清單"
+                      onClick={toggleImmersiveMode}
+                      style={{
+                        outlineColor: "#89A8B2",
+                        color: "#89A8B2",
+                      }}
                     >
-                      儲存清單
+                      {immersiveMode ? "返回" : "放大"}
                     </button>
-                    <button
-                      className={styles.button}
-                      onClick={playRandomTrack}
-                      title="隨機播放"
-                    >
-                      隨機播放
-                    </button>
-                    <button
-                      className={styles.button}
-                      onClick={playPreviousTrack}
-                      title="播放上一首"
-                    >
-                      上一首
-                    </button>
-                    <button
-                      className={styles.button}
-                      onClick={togglePlayPause}
-                      title={playing ? "暫停" : "播放"}
-                    >
-                      {playing ? "暫停" : "播放"}
-                    </button>
-                    <button
-                      className={styles.button}
-                      onClick={playNextTrack}
-                      title="播放下一首"
-                    >
-                      下一首
-                    </button>
-                    <button
-                      className={styles.button}
-                      onClick={toggleRepeatMode}
-                      title="循環模式"
-                    >
-                      {repeatMode === "none" && <span>關閉循環</span>}
-                      {repeatMode === "single" && <span>單曲循環</span>}
-                      {repeatMode === "playlist" && <span>歌單循環</span>}
-                    </button>
-                  </div>
-                )}
+                    {!immersiveMode && (
+                      <>
+                        <button
+                          className={styles.button}
+                          onClick={savePlaylist}
+                          title="儲存當前播放清單"
+                          style={{
+                            outlineColor: "#89A8B2",
+                            color: "#89A8B2",
+                          }}
+                        >
+                          儲存清單
+                        </button>
+                        <button
+                          className={styles.button}
+                          onClick={handleSetAutoPlay}
+                          title="自動播放"
+                          style={
+                            autoPlay
+                              ? {
+                                  color: "#86AB89",
+                                }
+                              : {
+                                  outlineColor: "grey",
+                                  color: "grey",
+                                }
+                          }
+                        >
+                          自動播放
+                        </button>
+                        <button
+                          className={styles.button}
+                          onClick={shufflePlaylist}
+                          title="隨機播放清單"
+                        >
+                          隨機播放清單
+                        </button>
 
-                <div className={styles.volumeControl}>
-                  <p>音量：{Math.round(volume * 100)}%</p>
-                  <input
-                    className={styles.progressBar}
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onChange={(e) => setVolume(parseFloat(e.target.value))}
-                    style={{ width: "25%", "--value": `${volumePercentage}%` }}
-                  />
+                        <button
+                          className={styles.button}
+                          onClick={togglePlayPause}
+                          title={playbackState.playing ? "暫停" : "播放"}
+                        >
+                          {playbackState.playing ? "暫停" : "播放"}
+                        </button>
+                        <button
+                          className={styles.button}
+                          onClick={playNextTrack}
+                          title="播放下一首"
+                        >
+                          下一首
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className={styles.volumeControl}>
+                    <p>
+                      {!immersiveMode ? "音量：" : ""}
+                      {Math.round(playbackState.volume * 100)}%
+                    </p>
+                    <input
+                      className={styles.progressBar}
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={playbackState.volume}
+                      onChange={(e) => {
+                        setPlaybackState((prev) => ({
+                          ...prev,
+                          volume: parseFloat(e.target.value),
+                        }));
+                      }}
+                      style={{
+                        width: "25%",
+                        "--value": `${playbackState.volume * 100}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-              </>
+              )}
+
+              {/* 儲存的播放清單 */}
+              {savedPlaylists.length > 0 && !immersiveMode && (
+                <div className={styles.savedPlaylistsContainer}>
+                  <a>已儲存的播放清單 (點擊以載入)</a>
+                  {savedPlaylists.map((pl) => (
+                    <div key={pl.id} className={styles.savedPlaylistItem}>
+                      <span
+                        className={styles.button}
+                        onClick={() => loadSavedPlaylist(pl.id)}
+                      >
+                        {pl.name} - {pl.tracks.length}首單曲 (建立於:{" "}
+                        {new Date(pl.createdAt).toLocaleString()})
+                      </span>
+                      <button
+                        className={styles.button}
+                        style={{ outlineColor: "#F95454", color: "#F95454" }}
+                        onClick={() => deleteSavedPlaylist(pl.id)}
+                      >
+                        刪除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {savedPlaylists.length > 0 && (
-          <div className={styles.savedPlaylistsContainer}>
-            <a>已儲存的播放清單 (點擊以載入)</a>
-            {savedPlaylists.map((pl) => (
-              <div key={pl.id} className={styles.savedPlaylistItem}>
-                <span
-                  className={styles.button}
-                  onClick={() => loadSavedPlaylist(pl.id)}
-                >
-                  {pl.name} - {pl.tracks.length}首單曲 (建立於:{" "}
-                  {new Date(pl.createdAt).toLocaleString()})
-                </span>
-                <button
-                  className={styles.button}
-                  style={{ outlineColor: "#F95454", color: "#F95454" }}
-                  onClick={() => deleteSavedPlaylist(pl.id)}
-                >
-                  刪除
-                </button>
+        <div className={styles.infoContainer}>
+          {users.length > 0 && (
+            <>
+              <div className={styles.usersContainer}>
+                <ul>
+                  {users.map((user) => (
+                    <li key={user.userId}>{user.userName || user.userId}</li>
+                  ))}
+                </ul>
               </div>
-            ))}
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

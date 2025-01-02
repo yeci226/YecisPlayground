@@ -39,13 +39,16 @@ export default function Hsr() {
     setSelectedRecordsIndex(null);
 
     try {
-      const res = await fetch(`https://36.50.249.18:6600/api/hsr/warp-log`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ logUrl }),
-      });
+      const res = await fetch(
+        `https://c698-2001-df2-45c1-18-00-1.ngrok-free.app/:4400/api/import-log`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ logUrl }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
