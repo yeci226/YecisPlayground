@@ -54,7 +54,7 @@
   max-height: 100px;
   overflow-y: auto;
   text-align: left; /* 文字靠左 */
-  scrollbar-width: thin; 
+  scrollbar-width: thin;
   scrollbar-color: #888 transparent;
   color: var(--fallback-bc);
 }
@@ -87,18 +87,17 @@
 }
 
 .loggerContainer::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 .loggerContainer::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
+  background: #90c293;
+  border-radius: 2.5px;
 }
 
 .loggerContainer::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
 }
-
 
 .loggerContainer ul {
   list-style: none; /* 移除項目符號 */
@@ -108,19 +107,19 @@
 }
 
 .loggerContainer li {
-  margin: 5px 0; 
-  font-size: 14px; 
+  margin: 5px 0;
+  font-size: 14px;
 }
 
 .logTime {
   color: gray;
   font-size: 12px;
-  margin-right: 5px; 
+  margin-right: 5px;
 }
 
 .logMessage {
   font-size: 14px;
-  color: var(--fallback-bc); 
+  color: var(--fallback-bc);
 }
 
 .savedPlaylistsContainer {
@@ -138,12 +137,12 @@
 }
 
 .savedPlaylistsContainer::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 .savedPlaylistsContainer::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
+  background: #90c293;
+  border-radius: 2.5px;
 }
 
 .savedPlaylistsContainer::-webkit-scrollbar-track {
@@ -232,15 +231,14 @@
 
 .searchResultsHeader {
   position: sticky;
-  top: 0; 
-  left: 0; 
+  top: 0;
+  left: 0;
   width: fit-content;
-  max-width: 100%; 
+  max-width: 100%;
   background-color: var(--bc);
-  z-index: 10; 
+  z-index: 10;
   padding: 3px;
 }
-
 
 .searchResultsList {
   display: flex;
@@ -273,12 +271,12 @@
 }
 
 .searchResults::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 .searchResults::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
+  background: #90c293;
+  border-radius: 2.5px;
 }
 
 .searchResults::-webkit-scrollbar-track {
@@ -346,17 +344,31 @@
 }
 
 .playerContainer {
-  flex: 1;
+  flex: 1; /* 佔滿剩餘空間 */
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   margin: 10px;
   padding: 10px;
   position: relative;
-  overflow: hidden;
+  overflow-y: scroll;
   background: none;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
+}
+
+.playerContainer::-webkit-scrollbar {
+  width: 5px;
+}
+
+.playerContainer::-webkit-scrollbar-thumb {
+  background: #90c293;
+  border-radius: 2.5px;
+}
+
+.playerContainer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .placeholder {
@@ -367,7 +379,6 @@
   font-size: 1.2rem;
   color: #666;
 }
-
 
 /* 置中物件 */
 .huge {
@@ -401,7 +412,7 @@
   flex-wrap: wrap;
   font-size: 1.5rem;
   z-index: 10;
-  color: #FFFFFF;
+  color: #ffffff;
   text-shadow: 1px 1px 2px #000000;
 }
 
@@ -427,7 +438,7 @@
   margin-left: 5%;
   padding: 0;
   width: 30%;
-  color: #FFFFFF;
+  color: #ffffff;
   text-shadow: 1px 1px 2px #000000;
 }
 
@@ -445,7 +456,7 @@
 
 .huge .controlPanel .button {
   outline: none;
-  color: #FFFFFF;
+  color: #ffffff;
   text-shadow: 1px 1px 2px #000000;
 }
 
@@ -455,7 +466,7 @@
   width: max-content;
   margin-top: 5px;
   font-size: 1.5rem;
-  color: #FFFFFF;
+  color: #ffffff;
   text-shadow: 1px 1px 2px #000000;
 }
 
@@ -482,7 +493,6 @@
   ); /* 使用渐变来表示已滑过部分 */
 }
 
-
 .playerContainer iframe {
   border: none; /* 移除邊框 */
   border-radius: 5px;
@@ -499,31 +509,32 @@
   z-index: -1;
 }
 
-
 .trackInfo {
   display: flex;
   justify-content: center;
   align-items: center;
   text-align: center;
-  margin-top: 30px;
+  margin-top: 1%;
   flex-wrap: wrap;
   user-select: text;
+  font-size: calc(0.8vw + 0.8vh);
 }
 
 .progressContainer {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 30px;
+  margin-top: 0.1%;
 }
 
 .progressBar {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 8px;
+  height: auto;
   background: #e0e0e0;
-  border-radius: 5px;
+  border-radius: calc(0.5vw + 0.5vh);
 }
 
 .progressBar::-webkit-slider-thumb {
@@ -562,9 +573,11 @@
   display: flex;
   justify-content: space-between;
   width: 100%;
+  font-size: calc(0.6vw + 0.6vh)
 }
 
 .volumeControl {
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -590,12 +603,12 @@
 }
 
 .playlistContainer::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 .playlistContainer::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
+  background: #90c293;
+  border-radius: 2.5px;
 }
 
 .playlistContainer::-webkit-scrollbar-track {

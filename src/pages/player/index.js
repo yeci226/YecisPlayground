@@ -93,7 +93,7 @@ export default function Player() {
 
     try {
       const ws = new WebSocket(
-        "wss://c698-2001-df2-45c1-18-00-1.ngrok-free.app/"
+        "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app"
       );
 
       ws.onopen = () => {
@@ -222,6 +222,7 @@ export default function Player() {
   // 更新播放順序的函數
   const handleDragEnd = (result) => {
     if (!result.destination) return;
+    if (result.source.index === result.destination.index) return;
 
     const reorderedPlaylist = Array.from(playlist);
     const [movedItem] = reorderedPlaylist.splice(result.source.index, 1);
@@ -804,6 +805,17 @@ export default function Player() {
                     </h1>
                     <button
                       className={styles.button}
+                      onClick={savePlaylist}
+                      title="儲存當前播放清單"
+                      style={{
+                        outlineColor: "#89A8B2",
+                        color: "#89A8B2",
+                      }}
+                    >
+                      儲存清單
+                    </button>
+                    <button
+                      className={styles.button}
                       style={{
                         outlineColor: "#F95454",
                         color: "#F95454",
@@ -976,7 +988,11 @@ export default function Player() {
                     style={{
                       flex: 1,
                       position: "relative",
-                      height: "100%",
+                      height: immersiveMode ? "100%" : "auto",
+                      width: !immersiveMode && "100%",
+                      maxWidth: !immersiveMode && "1000px",
+                      paddingTop: !immersiveMode && "12%", // 16:9
+                      aspectRatio: !immersiveMode && "16 / 9",
                     }}
                   >
                     <ReactPlayer
@@ -1043,17 +1059,6 @@ export default function Player() {
                     </button>
                     {!immersiveMode && (
                       <>
-                        <button
-                          className={styles.button}
-                          onClick={savePlaylist}
-                          title="儲存當前播放清單"
-                          style={{
-                            outlineColor: "#89A8B2",
-                            color: "#89A8B2",
-                          }}
-                        >
-                          儲存清單
-                        </button>
                         <button
                           className={styles.button}
                           onClick={handleSetAutoPlay}

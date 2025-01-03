@@ -40,7 +40,7 @@ export default function Hsr() {
 
     try {
       const res = await fetch(
-        `https://c698-2001-df2-45c1-18-00-1.ngrok-free.app/:4400/api/import-log`,
+        `https://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app:4400/api/import-log`,
         {
           method: "POST",
           headers: {
@@ -53,6 +53,8 @@ export default function Hsr() {
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
+
+      console.log(res);
 
       const data = await res.json();
       setResponse(data); // 將完整響應數據設置為狀態
