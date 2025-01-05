@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     try {
       let manga;
-      const { method, key } = req.query;
+      const { method, key, page } = req.query;
       switch (method) {
         case "random":
           manga = await nhentai.getRandom();
@@ -20,11 +20,12 @@ export default async function handler(req, res) {
           manga = await nhentai.getDoujin(key);
           break;
         case "keyWord":
-          manga = await nhentai.search(key);
+          manga = await nhentai.search(key, {
+            page: page - 1,
+          });
           break;
       }
 
-      console.log(manga);
       res.status(200).json(manga);
     } catch (error) {
       console.error("獲取失敗：", error);

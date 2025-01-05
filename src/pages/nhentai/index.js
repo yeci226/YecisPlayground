@@ -9,9 +9,13 @@ export default function Nhentai() {
   const { id } = router.query;
   const socketRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchResult, setSearchResult] = useState([]);
+  const [searchResultTotalPage, setSearchResultTotalPage] = useState(1);
 
   const [currentManga, setCurrentManga] = useState(null);
   const [currentMangaPage, setCurrentMangaPage] = useState(0);
@@ -105,6 +109,35 @@ export default function Nhentai() {
     };
   }, [router.isReady, connectWebSocket, initializeUser]);
 
+  const openMangaById = async (id) => {
+    setCurrentManga(null);
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `/api/nhentai/search?method=id&key=${id}`
+      ).then((res) => res.json());
+
+      console.log(response);
+
+      setCurrentManga(response);
+      setCurrentMangaPage(0);
+    } catch (error) {
+      console.error("Error during search:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchPageChange = async (page) => {
+    setSearchResult(["Loading..."]);
+    const newPage = Math.max(1, Math.min(page, searchResultTotalPage));
+    const response = await fetch(
+      `/api/nhentai/search?method=keyWord&key=${inputValue}&page=${newPage}`
+    ).then((res) => res.json());
+
+    setSearchResult(response.data);
+  };
+
   const handleSearch = async () => {
     setCurrentManga(null);
     setIsSearching(true);
@@ -115,20 +148,79 @@ export default function Nhentai() {
               (res) => res.json()
             )
           : await fetch(
-              `/api/nhentai/search?method=keyWord&key=${inputValue}`
+              `/api/nhentai/search?method=keyWord&key=${inputValue}&page=1`
             ).then((res) => res.json())
         : await fetch("/api/nhentai/search?method=random").then((res) =>
             res.json()
           );
 
-      setCurrentManga(response);
-      setCurrentMangaPage(0);
+      if (response.data.length > 1) {
+        setSearchResult(response.data);
+        setSearchResults(response);
+        setCurrentMangaPage(response.pagination.currentPage - 1 || 0);
+        setSearchResultTotalPage(response.pagination.totalPages || 1);
+      } else {
+        setCurrentManga(response);
+        setCurrentMangaPage(0);
+      }
     } catch (error) {
       console.error("Error during search:", error);
     } finally {
       setIsSearching(false);
     }
   };
+
+  function renderPaginationButtons(currentPage, totalPages, onPageChange) {
+    const maxAdjacentPages = 2;
+
+    const createButton = (page, isActive = false) => (
+      <button
+        key={page}
+        className={isActive ? styles.activePage : styles.pageButton}
+        onClick={() => onPageChange(page)}
+        disabled={isActive}
+      >
+        {page}
+      </button>
+    );
+
+    const createEllipsis = (key) => (
+      <span key={key} className={styles.ellipsis}>
+        ...
+      </span>
+    );
+
+    const pageButtons = [];
+
+    if (currentPage !== 1) pageButtons.push(createButton(1));
+    else pageButtons.push(createButton(1, true));
+
+    if (currentPage > maxAdjacentPages + 2)
+      pageButtons.push(createEllipsis("left-ellipsis"));
+
+    for (
+      let i = Math.max(2, currentPage - maxAdjacentPages);
+      i < currentPage;
+      i++
+    )
+      pageButtons.push(createButton(i));
+
+    if (currentPage !== 1) pageButtons.push(createButton(currentPage, true));
+
+    for (
+      let i = currentPage + 1;
+      i <= Math.min(totalPages - 1, currentPage + maxAdjacentPages);
+      i++
+    )
+      pageButtons.push(createButton(i));
+
+    if (currentPage < totalPages - maxAdjacentPages - 1)
+      pageButtons.push(createEllipsis("right-ellipsis"));
+
+    if (currentPage !== totalPages) pageButtons.push(createButton(totalPages));
+
+    return <div className={styles.paginationContainer}>{pageButtons}</div>;
+  }
 
   if (isLoading) {
     return <div>正在載入房間資訊...</div>;
@@ -176,15 +268,39 @@ export default function Nhentai() {
           >
             <div className={styles.mangaContainer}>
               <h1 className={styles.mangaTitle}>
-                {currentManga.originalTitle}
+                {currentManga.originalTitle || currentManga.title}
               </h1>
               <h2 className={styles.mangaId}>#{currentManga.id}</h2>
+              {isImageLoading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    color: "#A2A2A2",
+                    fontSize: "16px",
+                  }}
+                >
+                  圖片載入中...
+                </div>
+              )}
               <img
                 src={
                   currentManga.images.pages[currentMangaPage] ||
                   currentManga.cover
                 }
                 alt={currentManga.title}
+                style={{
+                  display: isImageLoading ? "none" : "block",
+                  width: "100%",
+                  height: "auto",
+                }}
+                onLoad={() => setIsImageLoading(false)}
+                onError={() => {
+                  setIsImageLoading(false);
+                  console.error("圖片載入失敗");
+                }}
               />
             </div>
             <div className={styles.mangaPageContainer}>
@@ -242,17 +358,87 @@ export default function Nhentai() {
 
         <div className={styles.infoContainer}>
           {users.length > 0 && (
-            <>
-              <div className={styles.usersContainer}>
-                <ul>
-                  {users.map((user) => (
-                    <li key={user.userId}>{user.userName || user.userId}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
+            <div className={styles.usersContainer}>
+              <ul>
+                {users.map((user) => (
+                  <li key={user.userId}>{user.userName || user.userId}</li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
+
+        {searchResults && searchResult.length > 0 && (
+          <div className={styles.searchResults}>
+            <div className={styles.searchResultsHeader}>
+              <button
+                className={styles.closeButton}
+                onClick={() => {
+                  setSearchResults([]);
+                  setSearchResult([]);
+                }}
+              >
+                ✖
+              </button>
+              <a className={styles.searchTitle}>{inputValue} 的搜尋結果</a>
+            </div>
+            {searchResult[0] != "Loading..." ? (
+              <div className={styles.searchResultsList}>
+                {searchResult.map((res, index) => (
+                  <div key={index} className={styles.searchResultItem}>
+                    <a
+                      onClick={() => {
+                        setSearchResults([]);
+                        setSearchResult([]);
+                        openMangaById(res.id);
+                      }}
+                    >
+                      <img
+                        src={res.cover}
+                        alt={res.id}
+                        className={styles.thumbnail}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span className={styles.mangaTitle}>{res.title}</span>
+                        <span className={styles.mangaId}>#{res.id}</span>
+                      </div>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className={styles.searchResultsList}
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                }}
+              >
+                <h1>載入中...</h1>
+              </div>
+            )}
+
+            {console.log(currentMangaPage)}
+            <div className={styles.searchResultsFooter}>
+              {renderPaginationButtons(
+                currentMangaPage + 1,
+                searchResultTotalPage,
+                (page) => {
+                  setCurrentMangaPage(page - 1);
+                  handleSearchPageChange(page);
+                }
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

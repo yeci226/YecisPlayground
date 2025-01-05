@@ -109,7 +109,7 @@
     padding: 0;
 }
 
-.mangaContainer .mangaId {
+.mangaId {
     color: #a2a2a2;
     font-size: 1rem;
 }
@@ -220,7 +220,23 @@
   .infoContainer ul li {
     color: #86ab89;
 }
-  
+
+.closeButton {
+  position: sticky;
+  top: 3px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 1100;
+}
+
+.closeButton:hover {
+  color: #f05454; /* 懸停時更醒目的顏色 */
+}
+
   .usersContainer {
     position: relative;
     bottom: 0;
@@ -248,4 +264,146 @@
   .usersContainer ul li {
     color: #86ab89;
   }
+
+  .searchTitle {
+    margin: 6px 0 0 20px;
+    padding: 0;
+  }
   
+  .searchResultsHeader {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: fit-content;
+    display: flex;
+    flex-direction: row;
+    max-width: 100%;
+    background-color: var(--bc);
+    z-index: 10;
+    padding: 3px;
+  }
+  
+  .searchResultsList {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    border-radius: 10px;
+    background-color: var(--bc);
+  }
+  
+  .searchResultItem {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    background-color: var(--bc);
+    margin: 3px;
+    outline: 1px solid #86ab89;
+    cursor: pointer;
+  }
+
+  .searchResults {
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.85); 
+    outline: 3px solid #86ab89; 
+    color: #fff; 
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); 
+    z-index: 1000; 
+    max-height: 70vh; 
+    overflow-y: auto;
+    width: 60%; 
+    max-width: 75vw;
+    transition: transform 0.3s ease, opacity 0.3s ease; 
+    max-height: 70vh;
+  }
+  
+  .searchResults::-webkit-scrollbar {
+    width: 5px;
+  }
+  
+  .searchResults::-webkit-scrollbar-thumb {
+    background: #90c293;
+    border-radius: 2.5px;
+  }
+  
+  .searchResults::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .mangaTitle {
+    display: -webkit-box; /* 用於啟用 Webkit 的盒模型 */
+    line-clamp: 3; /* 限制顯示的行數 */
+    -webkit-line-clamp: 3; /* 限制顯示的行數 */
+    -webkit-box-orient: vertical; /* 設置盒子為垂直方向 */
+    overflow: hidden; /* 隱藏超出的文本 */
+    text-overflow: ellipsis; /* 添加省略號 */
+    white-space: normal; /* 允許文本換行 */
+  }
+
+.paginationContainer {
+    user-select: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.pageButton {
+    font-size: 1.1rem;
+    flex-shrink: 0; 
+    white-space: nowrap;
+    background: var(--fallback-bg);
+    border-radius: 10px;
+    color: var(--fallback-bc);
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    outline: 2px solid #86ab89;
+    font-family: "YinPing", YinPing-JP, sans-serif;
+    max-width: fit-content;
+}
+
+.activePage {
+  font-size: 1.1rem;
+  flex-shrink: 0; 
+  white-space: nowrap;
+  background: #86ab89;
+  border-radius: 10px;
+  color: var(--fallback-bc);
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  outline: 2px solid #86ab89;
+  font-family: "YinPing", YinPing-JP, sans-serif;
+  max-width: fit-content;
+}
+  
+.searchResultsFooter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+  
+.thumbnail {
+  width: 240px;
+  height: 320px;
+  object-fit: cover;
+  border-radius: 1%;
+  margin-right: 10px;
+}
