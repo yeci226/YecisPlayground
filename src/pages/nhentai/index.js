@@ -19,6 +19,58 @@ export default function Nhentai() {
 
   const [currentManga, setCurrentManga] = useState(null);
   const [currentMangaPage, setCurrentMangaPage] = useState(0);
+  const [watchHistory, setWatchHistory] = useState([]);
+  const [mousePositions, setMousePositions] = useState({});
+
+  useEffect(() => {
+    if (currentManga) {
+      const existingHistory = watchHistory || [];
+
+      const isAlreadyInHistory = existingHistory.some(
+        (item) => item.id === currentManga.id
+      );
+
+      if (!isAlreadyInHistory) {
+        const updatedHistory = [
+          {
+            id: currentManga.id,
+            title: currentManga.title,
+            cover: currentManga.cover,
+            date: new Date().toISOString(),
+          },
+          ...existingHistory,
+        ];
+
+        if (updatedHistory.length > 20) updatedHistory.pop();
+
+        setWatchHistory(updatedHistory);
+        updateWatchHistory(updatedHistory); // 使用新的方法同步
+      }
+    }
+  }, [currentManga]);
+
+  function timeAgo(date) {
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    const intervals = [
+      { label: "年", seconds: 31536000 },
+      { label: "月", seconds: 2592000 },
+      { label: "週", seconds: 604800 },
+      { label: "天", seconds: 86400 },
+      { label: "小時", seconds: 3600 },
+      { label: "分鐘", seconds: 60 },
+      { label: "秒", seconds: 1 },
+    ];
+
+    for (const interval of intervals) {
+      const count = Math.floor(seconds / interval.seconds);
+      if (count > 0) {
+        return `${count} ${interval.label}前`;
+      }
+    }
+    return "剛剛";
+  }
 
   const initializeUser = useCallback(() => {
     if (!localStorage.getItem("userId")) {
@@ -34,6 +86,28 @@ export default function Nhentai() {
       }
       localStorage.setItem("userName", userName);
     }
+
+    const watchHistory = JSON.parse(localStorage.getItem("watchHistory")) || [];
+    setWatchHistory(watchHistory);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      const mouseData = {
+        type: "mouseMove",
+        userId: localStorage.getItem("userId"),
+        x: (event.clientX / window.innerWidth) * 100,
+        y: (event.clientY / window.innerHeight) * 100,
+      };
+
+      sendMessage("mouseMove", mouseData);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
   }, []);
 
   const connectWebSocket = useCallback(() => {
@@ -44,9 +118,7 @@ export default function Nhentai() {
     }
 
     try {
-      const ws = new WebSocket(
-        "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app"
-      );
+      const ws = new WebSocket("ws://localhost:4400");
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
@@ -54,7 +126,6 @@ export default function Nhentai() {
           JSON.stringify({
             type: "njoinRoom",
             roomId: id,
-            timestamp: new Date().toLocaleTimeString(),
             userName: localStorage.getItem("userName"),
             userId: localStorage.getItem("userId"),
           })
@@ -81,6 +152,8 @@ export default function Nhentai() {
         setIsLoading(false);
       };
 
+      socketRef.current = ws;
+
       return ws;
     } catch (error) {
       console.error("WebSocket connection failed:", error);
@@ -89,8 +162,67 @@ export default function Nhentai() {
     }
   }, [id, router]);
 
+  const updateWatchHistory = (newHistory) => {
+    setWatchHistory(newHistory);
+
+    sendMessage("updateWatchHistory", {
+      watchHistory: newHistory,
+    });
+  };
+
+  const sendMessage = useCallback((type, payload) => {
+    if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type,
+          ...payload,
+        })
+      );
+    }
+  }, []);
+
   const handleWebSocketMessage = useCallback((data) => {
     switch (data.type) {
+      case "updateWatchHistory":
+        setWatchHistory(data.watchHistory);
+        break;
+
+      case "updateCurrentManga":
+        if (data.manga && currentManga?.id !== data.manga.id) {
+          const updatedManga = replaceMangaImage(data.manga);
+          setCurrentManga(updatedManga);
+          setCurrentMangaPage(data.page || 0);
+        }
+        break;
+
+      case "updateMousePosition":
+        const { userId, userName, x, y } = data;
+
+        const pixelX = (x / 100) * window.innerWidth;
+        const pixelY = (y / 100) * window.innerHeight;
+
+        if (userId !== localStorage.getItem("userId"))
+          setMousePositions((prev) => ({
+            ...prev,
+            [userId]: { userName, x: pixelX, y: pixelY },
+          }));
+        break;
+      case "roomState":
+        console.log("Received room state:", data);
+        setUsers(data.users);
+        setMousePositions(data.mousePositions);
+
+        if (data.currentManga && currentManga?.id !== data.currentManga.id) {
+          const updatedManga = replaceMangaImage(data.currentManga);
+          setCurrentManga(updatedManga);
+          setCurrentMangaPage(0);
+        }
+
+        if (data.watchHistory) {
+          console.log("Setting watch history:", data.watchHistory);
+          setWatchHistory(data.watchHistory);
+        }
+        break;
       default:
         console.error("Unknown WebSocket message type:", data.type);
     }
@@ -117,15 +249,25 @@ export default function Nhentai() {
         `/api/nhentai/search?method=id&key=${id}`
       ).then((res) => res.json());
 
-      console.log(response);
-
-      setCurrentManga(response);
+      const updatedManga = replaceMangaImage(response);
+      setCurrentManga(updatedManga);
       setCurrentMangaPage(0);
+
+      sendMessage("updateCurrentManga", {
+        manga: updatedManga,
+      });
     } catch (error) {
       console.error("Error during search:", error);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const removeHistoryItem = (id) => {
+    const updatedHistory = watchHistory.filter((item) => item.id !== id);
+    setWatchHistory(updatedHistory);
+    localStorage.setItem("watchHistory", JSON.stringify(updatedHistory));
+    updateWatchHistory(updatedHistory);
   };
 
   const handleSearchPageChange = async (page) => {
@@ -138,36 +280,87 @@ export default function Nhentai() {
     setSearchResult(response.data);
   };
 
-  const handleSearch = async () => {
+  const handleSearchByKeyword = async (keyword) => {
+    setInputValue(keyword);
+    await handleSearch(keyword);
+  };
+
+  const handleSearch = async (keyword) => {
     setCurrentManga(null);
     setIsSearching(true);
-    try {
-      const response = inputValue
-        ? inputValue.match(/^\d+$/)
-          ? await fetch(`/api/nhentai/search?method=id&key=${inputValue}`).then(
-              (res) => res.json()
-            )
-          : await fetch(
-              `/api/nhentai/search?method=keyWord&key=${inputValue}&page=1`
-            ).then((res) => res.json())
-        : await fetch("/api/nhentai/search?method=random").then((res) =>
-            res.json()
-          );
 
-      if (response.data.length > 1) {
+    try {
+      const searchKeyword = keyword || inputValue;
+      console.log(keyword, inputValue);
+      console.log(searchKeyword);
+
+      let response;
+      if (searchKeyword) {
+        if (/^\d+$/.test(searchKeyword)) {
+          response = await fetch(
+            `/api/nhentai/search?method=id&key=${searchKeyword}`
+          ).then((res) => res.json());
+        } else {
+          response = await fetch(
+            `/api/nhentai/search?method=keyWord&key=${searchKeyword}&page=1`
+          ).then((res) => res.json());
+        }
+      } else {
+        response = await fetch("/api/nhentai/search?method=random").then(
+          (res) => res.json()
+        );
+      }
+
+      if (response?.data?.length > 1) {
         setSearchResult(response.data);
         setSearchResults(response);
-        setCurrentMangaPage(response.pagination.currentPage - 1 || 0);
-        setSearchResultTotalPage(response.pagination.totalPages || 1);
+        setCurrentMangaPage(response.pagination?.currentPage - 1 || 0);
+        setSearchResultTotalPage(response.pagination?.totalPages || 1);
       } else {
-        setCurrentManga(response);
+        const updatedManga = replaceMangaImage(response);
+        setCurrentManga(updatedManga);
         setCurrentMangaPage(0);
+
+        sendMessage("updateCurrentManga", {
+          manga: updatedManga,
+        });
       }
     } catch (error) {
       console.error("Error during search:", error);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const replaceMangaImage = (manga) => {
+    if (!manga || !manga.images || !manga.images.pages) {
+      console.error("Invalid manga data.");
+      return manga;
+    }
+
+    const regex =
+      /https:\/\/i\.nhentai\.net\/galleries\/(\d+)\/(\d+)\.(jpg|png|webp)/;
+
+    const replacedPages = manga.images.pages.map((url) => {
+      const match = url.match(regex);
+      if (!match) return url;
+
+      const galleryId = match[1];
+      const imageNumber = match[2];
+      const extension = match[3];
+
+      return extension === "jpg"
+        ? `https://i2.nhentai.net/galleries/${galleryId}/${imageNumber}.jpg`
+        : `https://i4.nhentai.net/galleries/${galleryId}/${imageNumber}.webp`;
+    });
+
+    return {
+      ...manga,
+      images: {
+        ...manga.images,
+        pages: replacedPages,
+      },
+    };
   };
 
   function renderPaginationButtons(currentPage, totalPages, onPageChange) {
@@ -232,40 +425,227 @@ export default function Nhentai() {
         <title>野茨遊樂場 - nHentai</title>
       </Head>
 
-      <div className={styles.contentContainer}>
-        <div className={styles.infoContainer}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="輸入ID或關鍵字"
-              className={styles.input}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") handleSearch();
-              }}
-            />
-            <button onClick={handleSearch} className={styles.button}>
-              {inputValue ? "搜尋" : "隨機"}
-            </button>
-            {isSearching && <span className={styles.searching}>搜尋中...</span>}
-          </div>
+      <div
+        className={styles.contentContainer}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <div className="mouseContainer">
+          {Object.entries(mousePositions || []).map(
+            ([userId, { userName, x, y }]) => (
+              <div
+                key={userId}
+                className="mousePointer"
+                style={{
+                  position: "absolute",
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  pointerEvents: "none",
+                  transform: "translate(-50%, -50%)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  zIndex: 9999,
+                }}
+              >
+                🖱️ {/* 鼠标图标 */}
+                <span
+                  className="userName"
+                  style={{ color: "#fff", fontSize: "12px" }}
+                >
+                  {userName}
+                </span>
+              </div>
+            )
+          )}
         </div>
 
-        {currentManga && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
+        <div className={styles.parentContainer}>
+          <div className={styles.infoContainer}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="輸入ID或關鍵字"
+                className={styles.input}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
+              />
+              <button
+                onClick={() => handleSearch(inputValue)}
+                className={styles.button}
+              >
+                {inputValue ? "搜尋" : "隨機"}
+              </button>
+              {isSearching && (
+                <span className={styles.searching}>搜尋中...</span>
+              )}
+            </div>
+
+            <div
+              style={{
+                marginTop: "1rem",
+                display: "flex",
+                flexDirection: "column",
+                flexWrap: "wrap",
+              }}
+            >
+              {currentManga && (
+                <>
+                  <a
+                    href={currentManga.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      textDecoration: "none",
+                      display: "flex",
+                    }}
+                  >
+                    <span className={styles.mangaId}>
+                      #{currentManga.id} {currentManga.images.pages.length}頁
+                    </span>
+                  </a>
+                  <div className={styles.tagsContainer}>
+                    作者{" "}
+                    {currentManga.artists.map((artist, index) => (
+                      <span
+                        onClick={() => handleSearchByKeyword(`${artist}`)}
+                        key={index}
+                        className={styles.tags}
+                      >
+                        {artist}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.tagsContainer}>
+                    作品{" "}
+                    {currentManga.parodies.map((parody, index) => (
+                      <span
+                        onClick={() => handleSearchByKeyword(`${parody}`)}
+                        key={index}
+                        className={styles.tags}
+                      >
+                        {parody}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.tagsContainer}>
+                    角色{" "}
+                    {currentManga.characters.map((character, index) => (
+                      <span
+                        onClick={() => handleSearchByKeyword(`${character}`)}
+                        key={index}
+                        className={styles.tags}
+                      >
+                        {character}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.tagsContainer}>
+                    標籤{" "}
+                    {currentManga.tags.map((tag, index) => (
+                      <span
+                        onClick={() => handleSearchByKeyword(`${tag}`)}
+                        key={index}
+                        className={styles.tags}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.tagsContainer}>
+                    群組{" "}
+                    {currentManga.groups.map((group, index) => (
+                      <span
+                        onClick={() => handleSearchByKeyword(`${group}`)}
+                        key={index}
+                        className={styles.tags}
+                      >
+                        {group}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.tagsContainer}>
+                    語言{" "}
+                    {currentManga.languages.map((language, index) => (
+                      <span
+                        onClick={() => handleSearchByKeyword(`${language}`)}
+                        key={index}
+                        className={styles.tags}
+                      >
+                        {language}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className={styles.watchHistoryContainer}>
+                <ul>
+                  {watchHistory.map((item) => (
+                    <li
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0.5rem",
+                        borderTop: "1px solid #A2A2A2",
+                      }}
+                    >
+                      <span
+                        onClick={() => openMangaById(item.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <img
+                          src={item.cover}
+                          alt={item.title}
+                          style={{
+                            maxWidth: "4rem",
+                            height: "auto",
+                            marginRight: "0.5rem",
+                            borderRadius: "5px",
+                          }}
+                        />
+                        <span className={styles.mangaTitle}>{item.title}</span>
+                        <span
+                          style={{
+                            color: "#A2A2A2",
+                            flexShrink: 0,
+                            whiteSpace: "nowarp",
+                            fontSize: "12px",
+                          }}
+                        >
+                          {timeAgo(new Date(item.date))}
+                        </span>
+                      </span>
+                      <button
+                        onClick={() => removeHistoryItem(item.id)}
+                        className={styles.closeButton}
+                      >
+                        ✖
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          {currentManga && (
             <div className={styles.mangaContainer}>
               <h1 className={styles.mangaTitle}>
                 {currentManga.originalTitle || currentManga.title}
@@ -287,8 +667,10 @@ export default function Nhentai() {
               )}
               <img
                 src={
-                  currentManga.images.pages[currentMangaPage] ||
-                  currentManga.cover
+                  currentManga.images.pages[currentMangaPage].replace(
+                    /https:\/\/i\.nhentai\.net\/galleries\/(\d+)\/(\d+)\.(jpg|png|webp)/,
+                    "https://i4.nhentai.net/galleries/$1/$2.webp"
+                  ) || currentManga.cover
                 }
                 alt={currentManga.title}
                 style={{
@@ -303,24 +685,85 @@ export default function Nhentai() {
                 }}
               />
             </div>
+          )}
+        </div>
+
+        {currentManga && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <div className={styles.mangaPageContainer}>
               <button
-                onClick={() =>
+                onClick={() => {
                   setCurrentMangaPage(
                     (currentMangaPage - 1 + currentManga.images.pages.length) %
                       currentManga.images.pages.length
-                  )
-                }
+                  );
+
+                  sendMessage("updateCurrentManga", {
+                    manga: currentManga,
+                    page:
+                      (currentMangaPage -
+                        1 +
+                        currentManga.images.pages.length) %
+                      currentManga.images,
+                  });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft") {
+                    setCurrentMangaPage(
+                      (currentMangaPage -
+                        1 +
+                        currentManga.images.pages.length) %
+                        currentManga.images.pages.length
+                    );
+
+                    sendMessage("updateCurrentManga", {
+                      manga: currentManga,
+                      page:
+                        (currentMangaPage -
+                          1 +
+                          currentManga.images.pages.length) %
+                        currentManga.images,
+                    });
+                  }
+                }}
+                tabIndex={0}
                 className={styles.button}
               >
                 上一頁
               </button>
               <button
-                onClick={() =>
+                onClick={() => {
                   setCurrentMangaPage(
                     (currentMangaPage + 1) % currentManga.images.pages.length
-                  )
-                }
+                  );
+
+                  sendMessage("updateCurrentManga", {
+                    manga: currentManga,
+                    page:
+                      (currentMangaPage + 1) % currentManga.images.pages.length,
+                  });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowRight") {
+                    setCurrentMangaPage(
+                      (currentMangaPage + 1) % currentManga.images.pages.length
+                    );
+
+                    sendMessage("updateCurrentManga", {
+                      manga: currentManga,
+                      page:
+                        (currentMangaPage + 1) %
+                        currentManga.images.pages.length,
+                    });
+                  }
+                }}
+                tabIndex={0}
                 className={styles.button}
               >
                 下一頁
@@ -332,8 +775,22 @@ export default function Nhentai() {
                 {currentManga.images.pages.map((page, index) => (
                   <li key={index} className={styles.mangaPageItem}>
                     <div className={styles.imageWrapper}>
-                      <a onClick={() => setCurrentMangaPage(index)}>
-                        <img src={page} alt={`Page ${index + 1}`} />
+                      <a
+                        onClick={() => {
+                          setCurrentMangaPage(index);
+                          sendMessage("updateCurrentManga", {
+                            manga: currentManga,
+                            page: index,
+                          });
+                        }}
+                      >
+                        <img
+                          src={page.replace(
+                            /https:\/\/i\.nhentai\.net\/galleries\/(\d+)\/(\d+)\.(jpg|png|webp)/,
+                            "https://i4.nhentai.net/galleries/$1/$2.webp"
+                          )}
+                          alt={`Page ${index + 1}`}
+                        />
                         <span
                           className={styles.pageNumber}
                           style={{
@@ -426,7 +883,6 @@ export default function Nhentai() {
               </div>
             )}
 
-            {console.log(currentMangaPage)}
             <div className={styles.searchResultsFooter}>
               {renderPaginationButtons(
                 currentMangaPage + 1,

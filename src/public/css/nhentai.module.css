@@ -61,52 +61,90 @@
     white-space: nowrap;
     user-select: none;
   }
-  
 
-.infoContainer {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    outline: 1px solid #86ab89;
+.tagsContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+  gap: 5px;
 }
 
-.mangaContainer {
-    outline: 1px solid #86ab89;
+.watchHistoryContainer {
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin: 10px;
-    padding: 10px;
-    border-radius: 10px;
-    background-color: var(--bc);
-    color: var(--fallback-bc);
-    width: 100%;
-    max-width: calc(540px + 10vw);
+    max-width: calc(100px + 15vw);
+    margin-top: 20px;
+    max-height: 100%;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #888 transparent;
 }
 
+.tags {
+    outline: 1px solid #86ab89;
+    border-radius: 5px;
+    padding: 3px;
+    background-color: #a2a2a233;
+    cursor: pointer;
+}
+
+.infoContainer {
+    display: flex;
+    flex-direction: column;
+    outline: 1px solid #86ab89;
+    max-width: calc(100px + 15vw);
+}
+
+.parentContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start; 
+  gap: 2rem;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.mangaContainer {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background-color: var(--bc);
+  color: var(--fallback-bc);
+  width: 100%;
+  max-width: calc(540px + 10vw); /* 自适应宽度 */
+  outline: 1px solid #86ab89;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #888 transparent;
+}
+
 .mangaContainer img {
-    border-radius: 10px;
-    width: 25vw;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.2s ease;
+  border-radius: 10px;
+  width: 25vw; /* 图片宽度占 25% 视窗宽度 */
+  height: auto; /* 保持图片比例 */
+  object-fit: cover; /* 图片裁剪模式 */
+  transition: transform 0.2s ease;
 }
 
 .mangaContainer .mangaTitle {
-    font-weight: thin;
-    font-size: calc(0.8rem + 0.5vw);
-    text-align: center;
-    letter-spacing: 0.1em;
-    -webkit-text-stroke-width: 0.5px;
-    -webkit-text-stroke-color: #86ab89;
-    margin: 0;
-    padding: 0;
+  font-weight: thin;
+  font-size: calc(0.8rem + 0.5vw);
+  text-align: center;
+  letter-spacing: 0.1em;
+  -webkit-text-stroke-width: 0.5px;
+  -webkit-text-stroke-color: #86ab89;
+  margin: 0;
+  padding: 0;
 }
 
 .mangaId {
@@ -147,6 +185,33 @@
     margin-left: 10px;
 }
 
+.mouseContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; 
+}
+
+.mousePointer {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.userName {
+  margin-bottom: 4px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: white;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
   .button {
     font-size: calc(0.4rem + 0.5vw);
     flex-shrink: 0; 
@@ -164,7 +229,7 @@
   }
 
   .input {
-    width: 50%;
+    width: 100%;
     background: none;
     border: none;
     border-radius: 5px;
@@ -196,21 +261,22 @@
     user-select: none;
   }
 
-.infoContainer {
+  .infoContainer {
     display: flex;
     flex-direction: column;
-    top: 10%;
-    left: 5%;
+    position: relative; /* 确保定位在父容器中有效 */
     padding: 10px;
     margin: 10px;
     border-radius: 10px;
     width: fit-content;
-    overflow-y: auto;
+    max-height: 80vh; /* 限制最大高度 */
+    overflow-y: auto; /* 可滚动内容 */
     text-align: left;
     scrollbar-width: thin;
     scrollbar-color: #888 transparent;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
   }
-  
+
   .infoContainer ul {
     padding: 0;
     margin: 0;
@@ -219,7 +285,7 @@
   
   .infoContainer ul li {
     color: #86ab89;
-}
+  }
 
 .closeButton {
   position: sticky;
@@ -253,6 +319,7 @@
     scrollbar-width: thin;
     scrollbar-color: #888 transparent;
     color: var(--fallback-bc);
+    user-select: none;
   }
   
   .usersContainer ul {
