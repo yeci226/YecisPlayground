@@ -118,7 +118,9 @@ export default function Nhentai() {
     }
 
     try {
-      const ws = new WebSocket("ws://localhost:4400");
+      const ws = new WebSocket(
+        "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app"
+      );
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
@@ -208,20 +210,17 @@ export default function Nhentai() {
           }));
         break;
       case "roomState":
-        console.log("Received room state:", data);
         setUsers(data.users);
         setMousePositions(data.mousePositions);
 
-        if (data.currentManga && currentManga?.id !== data.currentManga.id) {
-          const updatedManga = replaceMangaImage(data.currentManga);
+        if (data.manga && currentManga?.id !== data.manga.id) {
+          const updatedManga = replaceMangaImage(data.manga);
           setCurrentManga(updatedManga);
-          setCurrentMangaPage(0);
+          setCurrentMangaPage(data.page || 0);
         }
 
-        if (data.watchHistory) {
-          console.log("Setting watch history:", data.watchHistory);
-          setWatchHistory(data.watchHistory);
-        }
+        if (data.watchHistory) setWatchHistory(data.watchHistory);
+
         break;
       default:
         console.error("Unknown WebSocket message type:", data.type);
