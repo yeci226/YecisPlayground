@@ -1,120 +1,200 @@
 @font-face {
-    font-family: 'YinPing';
-    src: url('../fonts/YinPing.ttf') format('truetype');
+  font-family: 'YinPing';
+  src: url('../fonts/YinPing.ttf') format('truetype');
 }
 
 @font-face {
-    font-family: 'YinPing-JP';
-    src: url('../fonts/YinPing-JP.ttf') format('truetype');
+  font-family: 'YinPing-JP';
+  src: url('../fonts/YinPing-JP.ttf') format('truetype');
 }
 
 :root {
-  /* 定義亮色主題變量 */
-  --bg: 0.97 0.01 275;
-  --bc: 0.2 0.01 275;
-  --a: 0.8763563318872611 0.07936695661761213 179.84149083374814;
-  --tw-text-opacity: 1;
-  --fallback-bg: oklch(var(--bg) / 1);
-  --fallback-bc: oklch(var(--bc) / 1);
-  --fallback-a: oklch(var(--a)/var(--tw-text-opacity));
-  --bg-opacity: 0;
+/* Theme Variables */
+--bg: 0.97 0.01 275;
+--bc: 0.2 0.01 275;
+--a: 0.8763563318872611 0.07936695661761213 179.84149083374814;
+--tw-text-opacity: 1;
+--fallback-bg: oklch(var(--bg) / 1);
+--fallback-bc: oklch(var(--bc) / 1);
+--fallback-a: oklch(var(--a)/var(--tw-text-opacity));
+--bg-opacity: 0;
 
-  --rank-5-color: #FF9C73;
-  --rank-4-color: #A37EBA;
-  --rank-3-color: #9198ac;
+/* Ranking Colors */
+--rank-5-color: #FF9C73;
+--rank-4-color: #A37EBA;
+--rank-3-color: #9198ac;
+
+/* Transition Variables */
+--switch-duration: 1.75s;
+--switch-name: scale;
+--expo-in: cubic-bezier(0.7, 0, 0.84, 0);
+--mask-max-size: max(200vmax, 4000px); /* Added fallback size */
 }
 
-[data-theme="dark"] {
-  --bg: 0.2 0.01 275;
-  --bc: 0.9 0.01 275;
-  --fallback-bg: oklch(var(--bg) / 1);
-  --fallback-bc: oklch(var(--bc) / 1);
-  --bg-opacity: 1;
-  --rank-5-color: #FF7F50;
-  --rank-4-color: #9370DB;
-  --rank-3-color: #778899;
+/* Theme Transitions */
+::view-transition-group(root) {
+  animation-timing-function: var(--expo-in);
+  z-index: 100;
+  will-change: transform;
+  transform-origin: center;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+::view-transition-new(root) {
+  -webkit-mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
+  mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
+  animation: var(--switch-name) var(--switch-duration) var(--expo-in) forwards;
+  will-change: mask, -webkit-mask;
+}
+
+::view-transition-old(root) {
+  animation: var(--switch-name) var(--switch-duration) var(--expo-in) forwards;
+}
+
+.-animated {
+--switch-duration: 1s;
+--switch-name: scale-fast;
+}
+
+.dark, [data-theme="dark"] {
+--bg: 0.2 0.01 275;
+--bc: 0.9 0.01 275;
+--fallback-bg: oklch(var(--bg) / 1);
+--fallback-bc: oklch(var(--bc) / 1);
+--bg-opacity: 1;
+--rank-5-color: #FF7F50;
+--rank-4-color: #9370DB;
+--rank-3-color: #778899;
 }
 
 :root, [data-theme] {
-  background-color: var(--fallback-bg);
-  color: var(--fallback-bc);
-  font-family: "YinPing", YinPing-JP, sans-serif;
+background-color: var(--fallback-bg);
+color: var(--fallback-bc);
+font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 html, body {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  background-color: var(--fallback-bg);
-  background-image: var(--backgroundImage);
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  background-size: cover;
-  background-position: center;
-  -ms-background-size: cover;
-  -o-background-size: cover;
-  -moz-background-size: cover;
-  -webkit-background-size: cover;
+height: 100%;
+width: 100%;
+margin: 0;
+background-color: var(--fallback-bg);
+background-image: var(--backgroundImage);
+background-repeat: no-repeat;
+background-attachment: fixed;
+background-size: cover;
+background-position: center;
+-ms-background-size: cover;
+-o-background-size: cover;
+-moz-background-size: cover;
+-webkit-background-size: cover;
 }
 
 body {
   min-height: 100vh; 
   background-color: var(--fallback-bg);
   overflow-y: auto;
-  transition: background-color 0.5s ease, 
-              color 0.5s ease,
-              background-image 0.5s ease;
+  view-transition-name: none;
+  will-change: background-color;
+  backface-visibility: hidden;
 }
 
 body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('../assets/darkbg.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: var(--bg-opacity);
-  transition: opacity 0.5s ease;
-  z-index: -1;
+content: '';
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-image: url('../assets/darkbg.png');
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
+opacity: var(--bg-opacity);
+transition: opacity 0.5s ease;
+z-index: -1;
 }
 
+@keyframes scale {
+  0% {
+      -webkit-mask-size: 0;
+      mask-size: 0;
+      transform: scale(1);
+  }
+  10% {
+      -webkit-mask-size: min(50vw, 800px);
+      mask-size: min(50vw, 800px);
+      transform: scale(1.05);
+  }
+  90% {
+      -webkit-mask-size: min(100vw, 1600px);
+      mask-size: min(100vw, 1600px);
+      transform: scale(1.1);
+  }
+  to {
+      -webkit-mask-size: var(--mask-max-size);
+      mask-size: var(--mask-max-size);
+      transform: scale(1);
+  }
+}
+
+@keyframes scale-fast {
+  0% {
+      -webkit-mask-size: 0;
+      mask-size: 0;
+      transform: scale(1);
+  }
+  10% {
+      -webkit-mask-size: min(50vw, 800px);
+      mask-size: min(50vw, 800px);
+      transform: scale(1.05);
+  }
+  80% {
+      -webkit-mask-size: min(100vw, 1600px);
+      mask-size: min(100vw, 1600px);
+      transform: scale(1.1);
+  }
+  to {
+      -webkit-mask-size: var(--mask-max-size);
+      mask-size: var(--mask-max-size);
+      transform: scale(1);
+  }
+}
+
+
 .themeSwitchContainer {
-  position: fixed; 
-  top: 10px;
-  right: 1vw;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  margin: auto; 
-  width: auto; 
-  max-width: 100%; 
-  height: fit-content;
-  border: 1px solid var(--fallback-bc);
-  border-radius: 15px;
-  padding: 10px;
+position: fixed; 
+top: 10px;
+right: 1vw;
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+margin: auto; 
+width: auto; 
+max-width: 100%; 
+height: fit-content;
+border: 1px solid var(--fallback-bc);
+border-radius: 15px;
+padding: 10px;
 }
 
 .themeSwitchContainer button {
-  margin: 0;
-  padding: 0 5px;
-  border: none;
-  cursor: pointer;
-  background: none;
-  color: var(--fallback-bc);
+margin: 0;
+padding: 0 5px;
+border: none;
+cursor: pointer;
+background: none;
+color: var(--fallback-bc);
 }
 
 .themeSwitchContainer button:hover { 
-  cursor: pointer;
+cursor: pointer;
 }
 
 @media (max-width: 600px) {
-  .themeSwitchContainer {
-      flex-direction: column; 
-      width: 90%; 
-  }
+.themeSwitchContainer {
+    flex-direction: column; 
+    width: 90%; 
+}
 }

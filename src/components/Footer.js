@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useTheme } from "./ThemeProvider";
 
 const themes = [
   {
@@ -18,29 +18,8 @@ const themes = [
 ];
 
 const Footer = () => {
-  const [currentTheme, setCurrentTheme] = useState(themes[0]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("theme");
-      if (savedTheme) {
-        const themeFromStorage = themes.find(
-          (theme) => theme.theme === savedTheme
-        );
-        if (themeFromStorage) setCurrentTheme(themeFromStorage);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    document.body.setAttribute("data-theme", currentTheme.theme);
-    localStorage.setItem("theme", currentTheme.theme);
-  }, [currentTheme]);
-
-  const toggleTheme = () => {
-    const nextThemeIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
-    setCurrentTheme(themes[nextThemeIndex]);
-  };
+  const { theme, toggleTheme } = useTheme();
+  const currentTheme = themes.find((t) => t.theme === theme);
 
   return (
     <>

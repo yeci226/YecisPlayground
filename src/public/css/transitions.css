@@ -1,0 +1,63 @@
+:root {
+    --switch-duration: 1.75s;
+    --switch-name: scale;
+    --expo-in: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+.-animated {
+    --switch-duration: 1s;
+    --switch-name: scale-fast;
+}
+
+::view-transition-group(root) {
+    animation-timing-function: var(--expo-in);
+    z-index: 100;
+}
+
+::view-transition-new(root) {
+    -webkit-mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
+    mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
+    animation: var(--switch-name) var(--switch-duration);
+}
+
+::view-transition-old(root), .dark::view-transition-old(root) {
+    animation: var(--switch-name) var(--switch-duration);
+}
+
+@keyframes scale {
+    0% {
+        -webkit-mask-size: 0;
+        mask-size: 0;
+    }
+    10% {
+        -webkit-mask-size: 50vmax;
+        mask-size: 50vmax;
+    }
+    90% {
+        -webkit-mask-size: 50vmax;
+        mask-size: 50vmax;
+    }
+    to {
+        -webkit-mask-size: 2000vmax;
+        mask-size: 2000vmax;
+    }
+}
+
+@keyframes scale-fast {
+    0% {
+        -webkit-mask-size: 0;
+        mask-size: 0;
+    }
+    10% {
+        -webkit-mask-size: 50vmax;
+        mask-size: 50vmax;
+    }
+    80% {
+        -webkit-mask-size: 50vmax;
+        mask-size: 50vmax;
+    }
+    to {
+        -webkit-mask-size: 2000vmax;
+        mask-size: 2000vmax;
+    }
+}
