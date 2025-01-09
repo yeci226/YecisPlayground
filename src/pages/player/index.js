@@ -280,7 +280,7 @@ export default function Player() {
         console.log("Connection lost. Reconnecting...");
         setTimeout(() => {
           // Attempt to reconnect
-          setWs(new WebSocket(websocketHost));
+          connectWebSocket();
         }, 1000);
       };
 

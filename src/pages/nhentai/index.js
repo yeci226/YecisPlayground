@@ -134,11 +134,11 @@ export default function Nhentai() {
         setIsLoading(false);
       };
 
-      ws.onclose = () => {
+      socket.onclose = () => {
         console.log("Connection lost. Reconnecting...");
         setTimeout(() => {
           // Attempt to reconnect
-          setWs(new WebSocket(websocketHost));
+          connectWebSocket();
         }, 1000);
       };
 

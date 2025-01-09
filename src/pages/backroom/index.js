@@ -104,6 +104,7 @@ export default function Home() {
         setWs(new WebSocket(websocketHost));
       }, 1000);
     };
+
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
 
