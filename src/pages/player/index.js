@@ -5,6 +5,7 @@ import styles from "../../public/css/Player.module.css";
 import { v4 as uuidv4 } from "uuid";
 import ReactPlayer from "react-player";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+const websocketHost = "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app";
 
 export default function Player() {
   const router = useRouter();
@@ -25,14 +26,35 @@ export default function Player() {
   const [cooldown, setCooldown] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
+  const [repeatMode, setRepeatMode] = useState("none"); // none, track, playlist
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
   const [playbackState, setPlaybackState] = useState({
     playing: false,
     volume: 0.1,
     progress: 0,
     initialSync: false,
   });
+  const [previousVolume, setPreviousVolume] = useState(playbackState.volume);
   const playerRef = useRef(null);
   const timePercentage = (currentTime / duration) * 100;
+
+  const toggleImmersiveMode = () => {
+    setImmersiveMode(!immersiveMode);
+  };
+
+  // Send message to WebSocket server
+  const sendMessage = useCallback((type, payload) => {
+    if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type,
+          timestamp: new Date().toLocaleTimeString(),
+          ...payload,
+        })
+      );
+    }
+  }, []);
 
   const getRecommendedTracks = async (trackUrl) => {
     try {
@@ -49,6 +71,138 @@ export default function Player() {
       console.error("獲取推薦歌曲失敗：", error);
       return [];
     }
+  };
+
+  // Modify the existing playNextTrack function to handle repeat modes
+  const playNextTrack = useCallback(async () => {
+    if (!playlist || playlist.length === 0) return;
+
+    const currentTrackIndex = playlist.findIndex(
+      (track) => track.id === currentTrack.id
+    );
+
+    if (repeatMode === "track") {
+      // Replay the current track
+      if (playerRef.current) playerRef.current.seekTo(0);
+      return;
+    }
+
+    if (currentTrackIndex === playlist.length - 1) {
+      if (repeatMode === "playlist") {
+        // Play first track in playlist
+        const nextTrack = playlist[0];
+        setCurrentTrack(nextTrack);
+        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+        sendMessage("updateTrack", {
+          currentTrack: { ...nextTrack, progress: 0 },
+          playing: true,
+        });
+      } else if (autoPlay) {
+        const recommendedTracks = await getRecommendedTracks(currentTrack.url);
+        if (recommendedTracks.length > 0) {
+          const newTracks = recommendedTracks.map((track) => ({
+            ...track,
+            addedBy: "系統推薦",
+          }));
+          const updatedPlaylist = [...playlist, ...newTracks];
+          setPlaylist(updatedPlaylist);
+
+          sendMessage("updatePlaylist", {
+            messageType: "addPlaylist",
+            playlistName: "推薦歌曲",
+            playlistLength: newTracks.length,
+            playlist: updatedPlaylist,
+          });
+
+          const nextTrack = newTracks[0];
+          setCurrentTrack(nextTrack);
+          setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+          sendMessage("updateTrack", {
+            currentTrack: { ...nextTrack, progress: 0 },
+            playing: true,
+          });
+        } else {
+          console.error("無法獲取推薦歌曲");
+        }
+      }
+    } else {
+      // Play next track as normal
+      const nextTrack = playlist[currentTrackIndex + 1];
+      setCurrentTrack(nextTrack);
+      setPlaybackState((prev) => ({ ...prev, progress: 0 }));
+      sendMessage("updateTrack", {
+        currentTrack: { ...nextTrack, progress: 0 },
+        playing: true,
+      });
+    }
+  }, [
+    playlist,
+    currentTrack,
+    repeatMode,
+    autoPlay,
+    getRecommendedTracks,
+    sendMessage,
+  ]);
+
+  // Toggle play/pause
+  const togglePlayPause = () => {
+    const newPlayingState = !playbackState.playing;
+    sendMessage("updateTrack", {
+      messageType: "pauseTrack",
+      currentTrack: {
+        ...currentTrack,
+        progress: currentTrack.progress,
+      },
+      playing: newPlayingState,
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Only handle keyboard shortcuts if not typing in an input
+      if (e.target.tagName === "INPUT") return;
+
+      switch (e.key.toLowerCase()) {
+        case " ":
+          e.preventDefault();
+          togglePlayPause();
+          break;
+        case "n":
+          playNextTrack();
+          break;
+        case "r":
+          cycleRepeatMode();
+          break;
+        case "f":
+          setIsFiltering(!isFiltering);
+          break;
+        case "i":
+          toggleImmersiveMode();
+          break;
+        case "m":
+          setPlaybackState((prev) => {
+            const newVolume = prev.volume === 0 ? previousVolume : 0;
+            if (prev.volume !== 0) setPreviousVolume(prev.volume);
+            return { ...prev, volume: newVolume };
+          });
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [togglePlayPause, playNextTrack, toggleImmersiveMode]);
+
+  // Add this function to handle repeat mode cycling
+  const cycleRepeatMode = () => {
+    const modes = ["none", "track", "playlist"];
+    const currentIndex = modes.indexOf(repeatMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setRepeatMode(nextMode);
+    sendMessage("updateTrack", {
+      messageType: "setRepeatMode",
+      repeatMode: nextMode,
+    });
   };
 
   const handleSetAutoPlay = () => {
@@ -92,9 +246,7 @@ export default function Player() {
     }
 
     try {
-      const ws = new WebSocket(
-        "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app"
-      );
+      const ws = new WebSocket(websocketHost);
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
@@ -125,8 +277,11 @@ export default function Player() {
       };
 
       ws.onclose = () => {
-        console.log(`Disconnected from room ${id}`);
-        setIsLoading(false);
+        console.log("Connection lost. Reconnecting...");
+        setTimeout(() => {
+          // Attempt to reconnect
+          setWs(new WebSocket(websocketHost));
+        }, 1000);
       };
 
       return ws;
@@ -136,23 +291,6 @@ export default function Player() {
       return null;
     }
   }, [id, router]);
-
-  const toggleImmersiveMode = () => {
-    setImmersiveMode(!immersiveMode);
-  };
-
-  // Send message to WebSocket server
-  const sendMessage = useCallback((type, payload) => {
-    if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
-      socketRef.current.send(
-        JSON.stringify({
-          type,
-          timestamp: new Date().toLocaleTimeString(),
-          ...payload,
-        })
-      );
-    }
-  }, []);
 
   // Handle different WebSocket message types
   const handleWebSocketMessage = useCallback(
@@ -469,19 +607,6 @@ export default function Player() {
     [playlist, sendMessage]
   );
 
-  // Toggle play/pause
-  const togglePlayPause = () => {
-    const newPlayingState = !playbackState.playing;
-    sendMessage("updateTrack", {
-      messageType: "pauseTrack",
-      currentTrack: {
-        ...currentTrack,
-        progress: currentTrack.progress,
-      },
-      playing: newPlayingState,
-    });
-  };
-
   // Handle playback progress
   const handleProgress = () => {
     if (playerRef.current) {
@@ -502,55 +627,24 @@ export default function Player() {
     }
   };
 
-  const playNextTrack = useCallback(async () => {
-    if (!playlist || playlist.length === 0) return;
-
-    const currentTrackIndex = playlist.findIndex(
-      (track) => track.id === currentTrack.id
+  // Add these functions for playlist filtering
+  const getFilteredPlaylist = useCallback(() => {
+    if (!filterQuery) return playlist;
+    return playlist.filter(
+      (track) =>
+        track.title.toLowerCase().includes(filterQuery.toLowerCase()) ||
+        track.authorName?.toLowerCase().includes(filterQuery.toLowerCase())
     );
+  }, [playlist, filterQuery]);
 
-    if (currentTrackIndex === playlist.length - 1 && autoPlay) {
-      const recommendedTracks = await getRecommendedTracks(currentTrack.url);
-      if (recommendedTracks.length > 0) {
-        const newTracks = recommendedTracks.map((track) => ({
-          ...track,
-          addedBy: "系統推薦",
-        }));
-        const updatedPlaylist = [...playlist, ...newTracks];
-        setPlaylist(updatedPlaylist);
-
-        sendMessage("updatePlaylist", {
-          messageType: "addPlaylist",
-          playlistName: "推薦歌曲",
-          playlistLength: newTracks.length,
-          playlist: updatedPlaylist,
-        });
-
-        const nextTrack = newTracks[0];
-        setCurrentTrack(nextTrack);
-        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
-        sendMessage("updateTrack", {
-          currentTrack: { ...nextTrack, progress: 0 },
-          playing: true,
-        });
-      } else {
-        console.error("無法獲取推薦歌曲");
-      }
-    } else {
-      const nextTrack = playlist[(currentTrackIndex + 1) % playlist.length];
-      if (nextTrack) {
-        if (currentTrack && currentTrack.url == nextTrack.url)
-          playerRef.current.seekTo(0);
-
-        setCurrentTrack(nextTrack);
-        setPlaybackState((prev) => ({ ...prev, progress: 0 }));
-        sendMessage("updateTrack", {
-          currentTrack: { ...nextTrack, progress: 0 },
-          playing: true,
-        });
-      }
+  // Update the progress bar event handler to enable seeking
+  const handleProgressBarChange = (e) => {
+    const time = parseFloat(e.target.value);
+    if (playerRef.current) {
+      playerRef.current.seekTo(time);
     }
-  }, [playlist, currentTrack, autoPlay, getRecommendedTracks, sendMessage]);
+    setCurrentTime(time);
+  };
 
   const shufflePlaylist = () => {
     const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
@@ -826,6 +920,17 @@ export default function Player() {
                       清空歌單
                     </button>
                   </div>
+                  {isFiltering && (
+                    <div className={styles.filterContainer}>
+                      <input
+                        type="text"
+                        placeholder="在歌單中篩選..."
+                        value={filterQuery}
+                        onChange={(e) => setFilterQuery(e.target.value)}
+                        className={styles.filterInput}
+                      />
+                    </div>
+                  )}
                   <DragDropContext onDragEnd={handleDragEnd}>
                     <Droppable droppableId="playlist">
                       {(provided) => (
@@ -834,82 +939,96 @@ export default function Player() {
                           ref={provided.innerRef}
                           style={{ listStyleType: "none", padding: 0 }}
                         >
-                          {playlist.map((track, index) => (
-                            <Draggable
-                              key={track.id}
-                              draggableId={track.id}
-                              index={index}
-                            >
-                              {(provided) => (
-                                <li
-                                  key={track.id}
-                                  onClick={() => handleTrackChange(track.id)}
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`${styles.trackElement} ${
-                                    track.id === currentTrack.id
-                                      ? styles.active
-                                      : styles.inactive
-                                  }`}
-                                  style={{
-                                    ...provided.draggableProps.style,
-                                    position: "relative",
-                                    color:
+                          {getFilteredPlaylist().length > 0 ? (
+                            getFilteredPlaylist().map((track, index) => (
+                              <Draggable
+                                key={track.id}
+                                draggableId={track.id}
+                                index={index}
+                              >
+                                {(provided) => (
+                                  <li
+                                    key={track.id}
+                                    onClick={() => handleTrackChange(track.id)}
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={`${styles.trackElement} ${
                                       track.id === currentTrack.id
-                                        ? "#86AB89"
-                                        : "grey",
-                                    cursor:
-                                      track.id === currentTrack.id
-                                        ? "default"
-                                        : "pointer",
-                                  }}
-                                >
-                                  <>
-                                    {track.id === currentTrack.id ? (
-                                      <button
-                                        className={styles.removeButton}
-                                        style={{ cursor: "default" }}
-                                      >
-                                        🎵
-                                      </button>
-                                    ) : (
-                                      <button
-                                        className={styles.removeButton}
-                                        onClick={(event) =>
-                                          handleRemoveTrack(event, track.id)
-                                        }
-                                      >
-                                        ❌
-                                      </button>
+                                        ? styles.active
+                                        : styles.inactive
+                                    }`}
+                                    style={{
+                                      ...provided.draggableProps.style,
+                                      position: "relative",
+                                      color:
+                                        track.id === currentTrack.id
+                                          ? "#86AB89"
+                                          : "grey",
+                                      cursor:
+                                        track.id === currentTrack.id
+                                          ? "default"
+                                          : "pointer",
+                                    }}
+                                  >
+                                    <>
+                                      {track.id === currentTrack.id ? (
+                                        <button
+                                          className={styles.removeButton}
+                                          style={{ cursor: "default" }}
+                                        >
+                                          🎵
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className={styles.removeButton}
+                                          onClick={(event) =>
+                                            handleRemoveTrack(event, track.id)
+                                          }
+                                        >
+                                          ❌
+                                        </button>
+                                      )}
+                                    </>
+                                    {track.thumbnail && (
+                                      <img
+                                        src={track.thumbnail}
+                                        alt={track.title}
+                                        className={styles.thumbnail}
+                                      />
                                     )}
-                                  </>
-                                  {track.thumbnail && (
-                                    <img
-                                      src={track.thumbnail}
-                                      alt={track.title}
-                                      className={styles.thumbnail}
-                                    />
-                                  )}
-                                  <span>{track.title}</span>
+                                    <span className={styles.trackTitle}>
+                                      #
+                                      {playlist.findIndex(
+                                        (plTrack) => plTrack.id == track.id
+                                      )}{" "}
+                                      {track.title}
+                                    </span>
 
-                                  <span className={styles.addedBy}>
-                                    <span
-                                      style={{
-                                        fontSize: "0.8rem",
-                                        color: "grey",
-                                      }}
-                                    >
-                                      {track.authorName
-                                        ? `${track.authorName}`
-                                        : ""}
-                                    </span>{" "}
-                                    ▪︎ {track.addedBy}
-                                  </span>
-                                </li>
-                              )}
-                            </Draggable>
-                          ))}
+                                    <span className={styles.addedBy}>
+                                      <span
+                                        style={{
+                                          fontSize: "0.8rem",
+                                          color: "grey",
+                                        }}
+                                      >
+                                        {track.authorName
+                                          ? `${track.authorName}`
+                                          : ""}
+                                      </span>{" "}
+                                      ▪︎ {track.addedBy}
+                                    </span>
+                                  </li>
+                                )}
+                              </Draggable>
+                            ))
+                          ) : (
+                            <li className={styles.noResults}>
+                              {filterQuery
+                                ? "未找到匹配歌曲"
+                                : "播放清單是空的"}
+                            </li>
+                          )}
                           {provided.placeholder}
                         </ul>
                       )}
@@ -1041,7 +1160,7 @@ export default function Player() {
                       min={0}
                       max={duration || 0}
                       value={currentTime}
-                      disabled={true}
+                      onChange={handleProgressBarChange}
                       style={{ "--value": `${timePercentage}%` }}
                     />
                   </div>
@@ -1082,6 +1201,23 @@ export default function Player() {
                           title="隨機播放清單"
                         >
                           隨機播放清單
+                        </button>
+
+                        <button
+                          className={styles.button}
+                          onClick={cycleRepeatMode}
+                          title="Repeat Mode"
+                          style={{
+                            outlineColor:
+                              repeatMode !== "none" ? "#86AB89" : "grey",
+                            color: repeatMode !== "none" ? "#86AB89" : "grey",
+                          }}
+                        >
+                          {repeatMode === "track"
+                            ? "單曲循環"
+                            : repeatMode === "playlist"
+                            ? "歌單循環"
+                            : "無循環"}
                         </button>
 
                         <button

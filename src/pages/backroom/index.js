@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import styles from "../../public/css/Backroom.module.css";
+const websocketHost = "ws://localhost:4400";
 
 // Avatar options
 const AVATAR_OPTIONS = [
@@ -70,9 +71,7 @@ export default function Home() {
       setSelectedAvatar(JSON.parse(storedAvatar));
     }
 
-    const socket = new WebSocket(
-      "wss://b683-2001-df2-45c1-18-00-1.ngrok-free.app"
-    );
+    const socket = new WebSocket(websocketHost);
 
     socket.onopen = () => {
       console.log("Connected to WebSocket server");
@@ -98,6 +97,13 @@ export default function Home() {
       );
     };
 
+    socket.onclose = () => {
+      console.log("Connection lost. Reconnecting...");
+      setTimeout(() => {
+        // Attempt to reconnect
+        setWs(new WebSocket(websocketHost));
+      }, 1000);
+    };
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
 

@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { v4 as uuidv4 } from "uuid";
 import styles from "../../public/css/nhentai.module.css";
+const websocketHost = "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app";
 
 export default function Nhentai() {
   const router = useRouter();
@@ -118,9 +119,7 @@ export default function Nhentai() {
     }
 
     try {
-      const ws = new WebSocket(
-        "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app"
-      );
+      const ws = new WebSocket(websocketHost);
 
       ws.onopen = () => {
         console.log(`Connected to room ${id}`);
@@ -133,6 +132,14 @@ export default function Nhentai() {
           })
         );
         setIsLoading(false);
+      };
+
+      ws.onclose = () => {
+        console.log("Connection lost. Reconnecting...");
+        setTimeout(() => {
+          // Attempt to reconnect
+          setWs(new WebSocket(websocketHost));
+        }, 1000);
       };
 
       ws.onmessage = (event) => {
