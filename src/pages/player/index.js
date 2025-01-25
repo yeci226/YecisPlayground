@@ -36,7 +36,11 @@ export default function Player() {
     initialSync: false,
   });
   const [previousVolume, setPreviousVolume] = useState(playbackState.volume);
+  const [recommendations, setRecommendations] = useState([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] =
+    useState(false);
   const playerRef = useRef(null);
+
   const timePercentage = (currentTime / duration) * 100;
 
   const toggleImmersiveMode = () => {
@@ -217,6 +221,70 @@ export default function Player() {
       playing: playbackState.playing,
       autoPlay: newAutoPlayState,
     });
+  };
+
+  // Add useEffect to fetch recommendations when currentTrack changes
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!currentTrack?.url) return;
+
+      console.log("Fetching recommendations for:", currentTrack.url);
+      setIsLoadingRecommendations(true);
+      try {
+        const response = await fetch(`/api/getInfo?url=${currentTrack.url}`);
+        const data = await response.json();
+
+        // Filter out tracks already in playlist
+        const filteredRecommendations = data.filter(
+          (track) => !playlist.some((plTrack) => plTrack.id === track.id)
+        );
+
+        setRecommendations(filteredRecommendations);
+      } catch (error) {
+        console.error("Failed to fetch recommendations:", error);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [currentTrack]);
+
+  const RecommendationsPanel = () => {
+    if (!currentTrack || immersiveMode) return null;
+
+    return (
+      <div className={styles.recommendationsContainer}>
+        <span className="text-lg font-semibold mb-2">推薦歌曲</span>
+        {isLoadingRecommendations ? (
+          <span className="text-center py-4">載入推薦中...</span>
+        ) : recommendations.length === 0 ? (
+          <span></span>
+        ) : (
+          <div className={styles.recommendationsList}>
+            {recommendations.map((track) => (
+              <div key={track.id} className={styles.recommendationItem}>
+                <img
+                  src={track.thumbnail}
+                  alt={track.title}
+                  className={styles.thumbnail}
+                />
+                <div className={styles.recommendationInfo}>
+                  <span className={styles.trackTitle}>{track.title}</span>
+                  <span className={styles.authorName}>{track.authorName}</span>
+                </div>
+                <button
+                  onClick={() => handleLinkSubmit(track.url)}
+                  className={styles.button}
+                >
+                  添加
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const deleteSavedPlaylist = (playlistId) => {
@@ -1288,6 +1356,11 @@ export default function Player() {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* 推薦歌曲 */}
+              {currentTrack && playlist.length > 0 && !immersiveMode && (
+                <RecommendationsPanel />
               )}
             </div>
           )}

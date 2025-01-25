@@ -315,23 +315,23 @@
 }
 
 .button {
-  font-size: 1.1rem;
-  flex-shrink: 0; /* 防止按鈕被壓縮 */
-  white-space: nowrap; /* 防止文字換行 */
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
   background: var(--fallback-bg);
-  border-radius: 10px;
   color: var(--fallback-bc);
-  padding: 10px;
-  border: none;
-  cursor: pointer;
-  user-select: none;
   outline: 2px solid #86ab89;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
   font-family: "YinPing", YinPing-JP, sans-serif;
-  max-width: max-content;
+  font-weight: 500;
 }
 
 .button:hover {
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 .immersive {
@@ -711,3 +711,83 @@
     transform: translateY(0);
   }
 }
+
+.recommendationsContainer {
+  position: fixed;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 300px;
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+  max-height: 80vh;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.recommendationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.recommendationItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background: var(--background-color-light);
+  transition: background-color 0.2s;
+}
+
+.recommendationItem:hover {
+  background: var(--background-color-hover);
+}
+
+.recommendationInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.recommendationItem .thumbnail {
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.recommendationItem .trackTitle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recommendationItem .authorName {
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+}
+
+.recommendationItem .addButton {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.recommendationItem .addButton:hover {
+  background: var(--accent-color);
+  color: var(--background-color);
+}
+

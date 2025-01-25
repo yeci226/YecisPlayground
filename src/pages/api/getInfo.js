@@ -1,5 +1,5 @@
 import ytdl from "ytdl-core";
-const maxResults = 1;
+const maxResults = 3;
 
 export default async function handler(req, res) {
   if (req.method === "GET") {

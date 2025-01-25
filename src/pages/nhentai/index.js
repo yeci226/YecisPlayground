@@ -134,7 +134,7 @@ export default function Nhentai() {
         setIsLoading(false);
       };
 
-      socket.onclose = () => {
+      ws.onclose = () => {
         console.log("Connection lost. Reconnecting...");
         setTimeout(() => {
           // Attempt to reconnect
