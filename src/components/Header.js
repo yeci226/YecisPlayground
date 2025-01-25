@@ -77,6 +77,8 @@ const Header = () => {
       </div> */}
       <NavLink to="/player">播放器</NavLink>
       <NavLink to="/backroom">後室</NavLink>
+      <NavLink to="/ytdownloader">YT下載</NavLink>
+
       <div className={styles.navContainer}>
         <NavLink to="/nhentai">nHentai</NavLink>
       </div>
