@@ -44,6 +44,7 @@ export default function Player() {
     useState(false);
   const playerRef = useRef(null);
   const playerContainerRef = useRef(null);
+  const [userId, setUserId] = useState(null);
 
   const timePercentage = (currentTime / duration) * 100;
 
@@ -507,8 +508,12 @@ export default function Player() {
 
     const initApp = () => {
       // 使用者 ID / 名稱
-      if (!localStorage.getItem("userId"))
-        localStorage.setItem("userId", uuidv4());
+      let currentUserId = localStorage.getItem("userId");
+      if (!currentUserId) {
+        currentUserId = uuidv4();
+        localStorage.setItem("userId", currentUserId);
+      }
+      setUserId(currentUserId);
 
       if (!localStorage.getItem("userName")) {
         const userName = prompt("請輸入你的使用者名稱:");
@@ -518,6 +523,7 @@ export default function Player() {
         }
         localStorage.setItem("userName", userName);
       }
+      let userId = localStorage.getItem("userId");
 
       // 音量復原
       const savedVolume = parseFloat(localStorage.getItem("playerVolume"));
@@ -884,8 +890,8 @@ export default function Player() {
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          backgroundColor: "#111", // 深色背景
-          color: "#fff", // 白色文字
+          backgroundColor: "var(--fallback-bg)", // 深色背景
+          color: "var(--fallback-bc)", // 白色文字
           fontFamily: "sans-serif",
           textAlign: "center",
         }}
@@ -1465,8 +1471,12 @@ export default function Player() {
             <>
               <div className={styles.usersContainer}>
                 <ul>
+                  <label>在線使用者</label>
                   {users.map((user) => (
-                    <li key={user.userId}>{user.userName || user.userId}</li>
+                    <li key={user.id}>
+                      {user.userId === userId ? "🟢 " : "👤 "}
+                      {user.userName}
+                    </li>
                   ))}
                 </ul>
               </div>

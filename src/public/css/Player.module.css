@@ -45,29 +45,38 @@
   position: relative;
   bottom: 0;
   left: 0;
-  padding: 10px;
-  margin: 10px;
-  border-radius: 10px;
-  background-color: var(--bc);
-  width: fit-content;
-  max-width: 200px;
-  max-height: 100px;
+  padding: 0.75rem;
+  margin: 1rem;
+  border-radius: 12px;
+  background-color: var(--fallback-bg);
+  width: 220px;
+  max-height: 25vh;
   overflow-y: auto;
-  text-align: left; /* 文字靠左 */
-  scrollbar-width: thin;
-  scrollbar-color: #888 transparent;
+  box-shadow: 0 0 5px rgba(144, 194, 147, 0.4);
   color: var(--fallback-bc);
+  font-size: 0.95rem;
+  font-family: "YinPing", sans-serif;
 }
 
 .usersContainer ul {
+  list-style: none;
   padding: 0;
   margin: 0;
-  list-style-position: inside;
 }
 
 .usersContainer ul li {
-  color: #86ab89;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #90c293;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.usersContainer ul li:last-child {
+  border-bottom: none;
+}
+
 
 .loggerContainer {
   flex: 1;
