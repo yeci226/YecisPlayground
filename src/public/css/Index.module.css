@@ -8,6 +8,17 @@
   user-select: none;
 }
 
+.loadingScreen {
+  height: 100vh;
+  background: black;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
 .profileContainer {
   display: flex;
   flex-direction: row;

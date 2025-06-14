@@ -15,6 +15,7 @@
 }
 
 ::view-transition-new(root) {
+    z-index: 1000;
     -webkit-mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
     mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
     animation: var(--switch-name) var(--switch-duration);

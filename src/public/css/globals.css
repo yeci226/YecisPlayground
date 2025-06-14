@@ -25,10 +25,11 @@
 --rank-3-color: #9198ac;
 
 /* Transition Variables */
---switch-duration: 1.75s;
+--switch-duration: 1.5s;
 --switch-name: scale;
 --expo-in: cubic-bezier(0.7, 0, 0.84, 0);
---mask-max-size: max(200vmax, 4000px); /* Added fallback size */
+--mask-max-size: max(200vmax, 4000px);
+--transition-timing: ease-in-out;
 }
 
 /* Theme Transitions */
@@ -39,17 +40,20 @@
   transform-origin: center;
   backface-visibility: hidden;
   perspective: 1000px;
+  transition: all var(--transition-timing) var(--switch-duration);
 }
 
 ::view-transition-new(root) {
+  z-index: 1000;
   -webkit-mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
   mask: url(../assets/shigure-ui.webp) center / 0 no-repeat;
   animation: var(--switch-name) var(--switch-duration) var(--expo-in) forwards;
-  will-change: mask, -webkit-mask;
+  will-change: mask, -webkit-mask, transform;
 }
 
 ::view-transition-old(root) {
   animation: var(--switch-name) var(--switch-duration) var(--expo-in) forwards;
+  will-change: transform;
 }
 
 .-animated {
@@ -75,28 +79,33 @@ font-family: "YinPing", YinPing-JP, sans-serif;
 }
 
 html, body {
-height: 100%;
-width: 100%;
-margin: 0;
-background-color: var(--fallback-bg);
-background-image: var(--backgroundImage);
-background-repeat: no-repeat;
-background-attachment: fixed;
-background-size: cover;
-background-position: center;
--ms-background-size: cover;
--o-background-size: cover;
--moz-background-size: cover;
--webkit-background-size: cover;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--fallback-bg);
+  background-image: var(--backgroundImage);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  -ms-background-size: cover;
+  overflow-x: hidden;
 }
 
 body {
-  min-height: 100vh; 
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   background-color: var(--fallback-bg);
   overflow-y: auto;
   view-transition-name: none;
   will-change: background-color;
   backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body::before {
@@ -161,40 +170,65 @@ z-index: -1;
   }
 }
 
-
 .themeSwitchContainer {
-position: fixed; 
-top: 10px;
-right: 1vw;
-display: flex;
-flex-direction: row;
-justify-content: center;
-align-items: center;
-margin: auto; 
-width: auto; 
-max-width: 100%; 
-height: fit-content;
-border: 1px solid var(--fallback-bc);
-border-radius: 15px;
-padding: 10px;
+  position: fixed;
+  top: 10px;
+  right: 1vw;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+  width: auto;
+  max-width: 100%;
+  height: fit-content;
+  border: 1px solid var(--fallback-bc);
+  border-radius: 15px;
+  padding: 10px;
+  background-color: var(--fallback-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .themeSwitchContainer button {
-margin: 0;
-padding: 0 5px;
-border: none;
-cursor: pointer;
-background: none;
-color: var(--fallback-bc);
+  margin: 0;
+  padding: 8px 12px;
+  border: none;
+  cursor: pointer;
+  background: none;
+  color: var(--fallback-bc);
+  transition: all 0.3s ease;
+  border-radius: 8px;
 }
 
-.themeSwitchContainer button:hover { 
-cursor: pointer;
+.themeSwitchContainer button:hover {
+  cursor: pointer;
+  background-color: var(--fallback-bc);
+  color: var(--fallback-bg);
+  transform: translateY(-2px);
 }
 
-@media (max-width: 600px) {
-.themeSwitchContainer {
-    flex-direction: column; 
-    width: 90%; 
+@media (max-width: 768px) {
+  .themeSwitchContainer {
+    flex-direction: column;
+    width: auto;
+    right: 10px;
+    top: 10px;
+    padding: 8px;
+  }
+  
+  .themeSwitchContainer button {
+    padding: 6px 10px;
+    margin: 2px 0;
+  }
 }
+
+@media (max-width: 480px) {
+  .themeSwitchContainer {
+    width: auto;
+    right: 5px;
+    top: 5px;
+  }
 }

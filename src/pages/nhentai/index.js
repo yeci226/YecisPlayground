@@ -3,7 +3,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { v4 as uuidv4 } from "uuid";
 import styles from "../../public/css/nhentai.module.css";
-const websocketHost = "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app";
+import { config } from "../../config";
+const websocketHost = config.websocketHost;
 
 export default function Nhentai() {
   const router = useRouter();
@@ -422,7 +423,55 @@ export default function Nhentai() {
   }
 
   if (isLoading) {
-    return <div>正在載入房間資訊...</div>;
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          backgroundColor: "#111", // 深色背景
+          color: "#fff", // 白色文字
+          fontFamily: "sans-serif",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
+          正在載入房間資訊<span className="dot-animation">...</span>
+        </div>
+        <div style={{ marginBottom: "0.5rem", fontSize: "1.2rem" }}>
+          房間 ID: {id || "正在生成中..."}
+        </div>
+        <div style={{ fontSize: "1rem", color: "#aaa" }}>
+          建立 WebSocket 連線中，請稍候。
+        </div>
+        <style jsx>{`
+          .dot-animation::after {
+            content: "";
+            display: inline-block;
+            width: 1em;
+            text-align: left;
+            animation: dots 1.5s steps(3, end) infinite;
+          }
+
+          @keyframes dots {
+            0% {
+              content: "";
+            }
+            33% {
+              content: ".";
+            }
+            66% {
+              content: "..";
+            }
+            100% {
+              content: "...";
+            }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -440,8 +489,9 @@ export default function Nhentai() {
         }}
       >
         <div className="mouseContainer">
-          {Object.entries(mousePositions || []).map(
-            ([userId, { userName, x, y }]) => (
+          {Object.entries(mousePositions || [])
+            .filter(([userId]) => userId !== localStorage.getItem("userId"))
+            .map(([userId, { userName, x, y }]) => (
               <div
                 key={userId}
                 className="mousePointer"
@@ -457,7 +507,7 @@ export default function Nhentai() {
                   zIndex: 9999,
                 }}
               >
-                🖱️ {/* 鼠标图标 */}
+                🖱️
                 <span
                   className="userName"
                   style={{ color: "#fff", fontSize: "12px" }}
@@ -465,8 +515,7 @@ export default function Nhentai() {
                   {userName}
                 </span>
               </div>
-            )
-          )}
+            ))}
         </div>
 
         <div className={styles.parentContainer}>

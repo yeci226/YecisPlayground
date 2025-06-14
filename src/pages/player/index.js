@@ -1,11 +1,13 @@
 import Head from "next/head";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import styles from "../../public/css/Player.module.css";
 import { v4 as uuidv4 } from "uuid";
+import { CSSTransition, SwitchTransition } from "react-transition-group";
 import ReactPlayer from "react-player";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-const websocketHost = "wss://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app";
+import { config } from "../../config";
+const websocketHost = config.websocketHost;
 
 export default function Player() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function Player() {
   const [repeatMode, setRepeatMode] = useState("none"); // none, track, playlist
   const [isFiltering, setIsFiltering] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
+  const [showRecommendations, setShowRecommendations] = useState(true);
   const [playbackState, setPlaybackState] = useState({
     playing: false,
     volume: 0.1,
@@ -40,6 +43,7 @@ export default function Player() {
   const [isLoadingRecommendations, setIsLoadingRecommendations] =
     useState(false);
   const playerRef = useRef(null);
+  const playerContainerRef = useRef(null);
 
   const timePercentage = (currentTime / duration) * 100;
 
@@ -103,7 +107,10 @@ export default function Player() {
         });
       } else if (autoPlay) {
         const recommendedTracks = await getRecommendedTracks(currentTrack.url);
-        if (recommendedTracks.length > 0) {
+        const alreadyHasRecommended = playlist.some(
+          (t) => t.addedBy === "系統推薦"
+        );
+        if (!alreadyHasRecommended && recommendedTracks.length > 0) {
           const newTracks = recommendedTracks.map((track) => ({
             ...track,
             addedBy: "系統推薦",
@@ -255,34 +262,51 @@ export default function Player() {
 
     return (
       <div className={styles.recommendationsContainer}>
-        <span className="text-lg font-semibold mb-2">推薦歌曲</span>
-        {isLoadingRecommendations ? (
-          <span className="text-center py-4">載入推薦中...</span>
-        ) : recommendations.length === 0 ? (
-          <span></span>
-        ) : (
-          <div className={styles.recommendationsList}>
-            {recommendations.map((track) => (
-              <div key={track.id} className={styles.recommendationItem}>
-                <img
-                  src={track.thumbnail}
-                  alt={track.title}
-                  className={styles.thumbnail}
-                />
-                <div className={styles.recommendationInfo}>
-                  <span className={styles.trackTitle}>{track.title}</span>
-                  <span className={styles.authorName}>{track.authorName}</span>
+        <div
+          className={styles.recommendationsHeader}
+          onClick={() => setShowRecommendations(!showRecommendations)}
+        >
+          <span className="text-lg font-semibold">推薦歌曲</span>
+          <span className={styles.toggleIcon}>
+            {showRecommendations ? "▾" : "▸"}
+          </span>
+        </div>
+
+        <div
+          className={`${styles.recommendationsContent} ${
+            showRecommendations ? styles.open : styles.closed
+          }`}
+        >
+          {isLoadingRecommendations ? (
+            <span className="text-center py-4">載入推薦中...</span>
+          ) : recommendations.length === 0 ? (
+            <span className="text-gray-500 text-sm">暫無推薦</span>
+          ) : (
+            <div className={styles.recommendationsList}>
+              {recommendations.map((track) => (
+                <div key={track.id} className={styles.recommendationItem}>
+                  <img
+                    src={track.thumbnail}
+                    alt={track.title}
+                    className={styles.thumbnail}
+                  />
+                  <div className={styles.recommendationInfo}>
+                    <span className={styles.trackTitle}>{track.title}</span>
+                    <span className={styles.authorName}>
+                      {track.authorName}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleLinkSubmit(track.url)}
+                    className={styles.button}
+                  >
+                    添加
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleLinkSubmit(track.url)}
-                  className={styles.button}
-                >
-                  添加
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -310,7 +334,8 @@ export default function Player() {
   const connectWebSocket = useCallback(() => {
     if (!id) {
       const newRoomId = uuidv4();
-      router.push(`/player?id=${newRoomId}`);
+      router.replace(`/player?id=${newRoomId}`);
+      return; // 避免用錯 ID 馬上連線
     }
 
     try {
@@ -478,33 +503,46 @@ export default function Player() {
   };
 
   useEffect(() => {
-    const storedPlaylists = localStorage.getItem("savedPlaylists");
-    if (storedPlaylists) {
-      setSavedPlaylists(JSON.parse(storedPlaylists));
-    }
-  }, []);
+    if (!router.isReady) return;
 
-  // Establish WebSocket connection
-  useEffect(() => {
-    if (router.isReady) {
-      if (!localStorage.getItem("userId")) {
-        const userId = uuidv4();
-        localStorage.setItem("userId", userId);
-      }
+    const initApp = () => {
+      // 使用者 ID / 名稱
+      if (!localStorage.getItem("userId"))
+        localStorage.setItem("userId", uuidv4());
+
       if (!localStorage.getItem("userName")) {
         const userName = prompt("請輸入你的使用者名稱:");
-        if (!userName || userName.length > 16)
-          return alert("使用者名稱長度不可超過16個字元");
+        if (!userName || userName.length > 16) {
+          alert("使用者名稱長度不可超過16個字元");
+          return;
+        }
         localStorage.setItem("userName", userName);
       }
+
+      // 音量復原
+      const savedVolume = parseFloat(localStorage.getItem("playerVolume"));
+      if (!isNaN(savedVolume)) {
+        setPlaybackState((prev) => ({ ...prev, volume: savedVolume }));
+        setPreviousVolume(savedVolume);
+      }
+
+      // 播放清單復原
+      const storedPlaylists = localStorage.getItem("savedPlaylists");
+      if (storedPlaylists) {
+        setSavedPlaylists(JSON.parse(storedPlaylists));
+      }
+
+      // 建立 WebSocket
       const ws = connectWebSocket();
       socketRef.current = ws;
 
       return () => {
         if (ws) ws.close();
       };
-    }
-  }, [router.isReady, connectWebSocket]);
+    };
+
+    initApp();
+  }, [router.isReady]);
 
   const handleRemoveTrack = useCallback(async (event, trackId) => {
     event.stopPropagation();
@@ -540,16 +578,15 @@ export default function Player() {
   };
 
   function generateUniqueId(baseId, playlist) {
-    let uniqueId = baseId;
+    const existingIds = new Set(playlist.map((item) => item.id));
+    let id = baseId;
     let counter = 1;
 
-    // 检查是否存在相同 ID，如果有则尝试新的 ID
-    while (playlist.some((item) => item.id === uniqueId)) {
-      uniqueId = `${baseId}${counter}`;
-      counter++;
+    while (existingIds.has(id)) {
+      id = `${baseId}_${counter++}`;
     }
 
-    return uniqueId;
+    return id;
   }
 
   // Add new track to playlist
@@ -676,27 +713,31 @@ export default function Player() {
   );
 
   // Handle playback progress
+  const lastSyncTimeRef = useRef(0);
+  const SYNC_INTERVAL = 2000; // 2 秒
+
   const handleProgress = () => {
-    if (playerRef.current) {
-      const time = playerRef.current.getCurrentTime();
-      const duration = playerRef.current.getDuration();
-      setCurrentTime(time || 0);
-      setDuration(duration || 0);
-    }
+    if (!playerRef.current) return;
+
+    const time = playerRef.current.getCurrentTime();
+    const duration = playerRef.current.getDuration();
+    setCurrentTime(time || 0);
+    setDuration(duration || 0);
 
     if (playbackState.playing && currentTrack) {
-      const newProgress = currentTime;
-      setPlaybackState((prev) => ({ ...prev, progress: newProgress }));
-
-      // sendMessage("updateCurrentTrack", {
-      //   currentTrack: { ...currentTrack, progress: newProgress },
-      //   playing: true,
-      // });
+      const now = Date.now();
+      if (now - lastSyncTimeRef.current > SYNC_INTERVAL) {
+        lastSyncTimeRef.current = now;
+        sendMessage("updateCurrentTrack", {
+          currentTrack: { ...currentTrack, progress: time },
+          playing: true,
+        });
+      }
     }
   };
 
   // Add these functions for playlist filtering
-  const getFilteredPlaylist = useCallback(() => {
+  const filteredPlaylist = useMemo(() => {
     if (!filterQuery) return playlist;
     return playlist.filter(
       (track) =>
@@ -835,7 +876,55 @@ export default function Player() {
 
   // Render loading state
   if (isLoading) {
-    return <div>正在載入房間資訊...</div>;
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          backgroundColor: "#111", // 深色背景
+          color: "#fff", // 白色文字
+          fontFamily: "sans-serif",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
+          正在載入房間資訊<span className="dot-animation">...</span>
+        </div>
+        <div style={{ marginBottom: "0.5rem", fontSize: "1.2rem" }}>
+          房間 ID: {id || "正在生成中..."}
+        </div>
+        <div style={{ fontSize: "1rem", color: "#aaa" }}>
+          建立 WebSocket 連線中，請稍候。
+        </div>
+        <style jsx>{`
+          .dot-animation::after {
+            content: "";
+            display: inline-block;
+            width: 1em;
+            text-align: left;
+            animation: dots 1.5s steps(3, end) infinite;
+          }
+
+          @keyframes dots {
+            0% {
+              content: "";
+            }
+            33% {
+              content: ".";
+            }
+            66% {
+              content: "..";
+            }
+            100% {
+              content: "...";
+            }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -1007,8 +1096,8 @@ export default function Player() {
                           ref={provided.innerRef}
                           style={{ listStyleType: "none", padding: 0 }}
                         >
-                          {getFilteredPlaylist().length > 0 ? (
-                            getFilteredPlaylist().map((track, index) => (
+                          {filteredPlaylist.length > 0 ? (
+                            filteredPlaylist.map((track, index) => (
                               <Draggable
                                 key={track.id}
                                 draggableId={track.id}
@@ -1039,25 +1128,17 @@ export default function Player() {
                                           : "pointer",
                                     }}
                                   >
-                                    <>
-                                      {track.id === currentTrack.id ? (
-                                        <button
-                                          className={styles.removeButton}
-                                          style={{ cursor: "default" }}
-                                        >
-                                          🎵
-                                        </button>
-                                      ) : (
-                                        <button
-                                          className={styles.removeButton}
-                                          onClick={(event) =>
-                                            handleRemoveTrack(event, track.id)
-                                          }
-                                        >
-                                          ❌
-                                        </button>
-                                      )}
-                                    </>
+                                    {track.id !== currentTrack.id && (
+                                      <button
+                                        className={styles.removeButton}
+                                        onClick={(event) =>
+                                          handleRemoveTrack(event, track.id)
+                                        }
+                                        title="從播放清單中移除"
+                                      >
+                                        ❌
+                                      </button>
+                                    )}
                                     {track.thumbnail && (
                                       <img
                                         src={track.thumbnail}
@@ -1165,172 +1246,185 @@ export default function Player() {
             >
               {/* 播放器 */}
               {currentTrack && playlist.length > 0 && (
-                <div
-                  className={`${styles.playerContainer} ${
-                    immersiveMode ? styles.huge : ""
-                  }`}
-                  style={immersiveMode ? { display: "block" } : {}}
-                >
-                  <div
-                    style={{
-                      flex: 1,
-                      position: "relative",
-                      height: immersiveMode ? "100%" : "auto",
-                      width: !immersiveMode && "100%",
-                      maxWidth: !immersiveMode && "1000px",
-                      paddingTop: !immersiveMode && "12%", // 16:9
-                      aspectRatio: !immersiveMode && "16 / 9",
-                    }}
+                <SwitchTransition mode="out-in">
+                  <CSSTransition
+                    key={currentTrack?.id}
+                    timeout={600}
+                    classNames="fade"
+                    nodeRef={playerContainerRef}
                   >
-                    <ReactPlayer
-                      ref={playerRef}
-                      url={currentTrack.url}
-                      playing={playbackState.playing}
-                      volume={playbackState.volume}
-                      onProgress={handleProgress}
-                      onEnded={playNextTrack}
-                      controls={false}
-                      width="100%"
-                      height="100%"
-                      progressInterval={500}
-                    />
-                  </div>
-
-                  <div className={styles.trackInfo}>
-                    {immersiveMode &&
-                      `#${
-                        playlist.findIndex(
-                          (track) => track.id == currentTrack?.id
-                        ) + 1
-                      } - `}
-                    {
-                      playlist.find((track) => track.id == currentTrack?.id)
-                        ?.title
-                    }
-                  </div>
-
-                  <div className={styles.progressContainer}>
-                    <div className={styles.timeDisplay}>
-                      {immersiveMode ? (
-                        <span>
-                          {formatTime(currentTime)} / {formatTime(duration)}
-                        </span>
-                      ) : (
-                        <>
-                          <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(duration)}</span>
-                        </>
-                      )}
-                    </div>
-                    <input
-                      className={styles.progressBar}
-                      type="range"
-                      min={0}
-                      max={duration || 0}
-                      value={currentTime}
-                      onChange={handleProgressBarChange}
-                      style={{ "--value": `${timePercentage}%` }}
-                    />
-                  </div>
-
-                  <div className={styles.controlPanel}>
-                    <button
-                      className={styles.button}
-                      onClick={toggleImmersiveMode}
-                      style={{
-                        outlineColor: "#89A8B2",
-                        color: "#89A8B2",
-                      }}
+                    <div
+                      className={`${styles.playerContainer} ${
+                        immersiveMode ? styles.huge : ""
+                      }`}
+                      style={immersiveMode ? { display: "block" } : {}}
                     >
-                      {immersiveMode ? "返回" : "放大"}
-                    </button>
-                    {!immersiveMode && (
-                      <>
-                        <button
-                          className={styles.button}
-                          onClick={handleSetAutoPlay}
-                          title="自動播放"
-                          style={
-                            autoPlay
-                              ? {
-                                  color: "#86AB89",
-                                }
-                              : {
-                                  outlineColor: "grey",
-                                  color: "grey",
-                                }
-                          }
-                        >
-                          自動播放
-                        </button>
-                        <button
-                          className={styles.button}
-                          onClick={shufflePlaylist}
-                          title="隨機播放清單"
-                        >
-                          隨機播放清單
-                        </button>
+                      <div
+                        style={{
+                          flex: 1,
+                          position: "relative",
+                          height: immersiveMode ? "100%" : "auto",
+                          width: !immersiveMode && "100%",
+                          maxWidth: !immersiveMode && "1000px",
+                          paddingTop: !immersiveMode && "12%", // 16:9
+                          aspectRatio: !immersiveMode && "16 / 9",
+                        }}
+                      >
+                        <ReactPlayer
+                          key={currentTrack?.id}
+                          ref={playerRef}
+                          url={currentTrack.url}
+                          playing={playbackState.playing}
+                          volume={playbackState.volume}
+                          onProgress={handleProgress}
+                          onEnded={playNextTrack}
+                          controls={false}
+                          width="100%"
+                          height="100%"
+                          progressInterval={250}
+                        />
+                      </div>
 
+                      <div className={styles.trackInfo}>
+                        {immersiveMode &&
+                          `#${
+                            playlist.findIndex(
+                              (track) => track.id == currentTrack?.id
+                            ) + 1
+                          } - `}
+                        {
+                          playlist.find((track) => track.id == currentTrack?.id)
+                            ?.title
+                        }
+                      </div>
+
+                      <div className={styles.progressContainer}>
+                        <div className={styles.timeDisplay}>
+                          {immersiveMode ? (
+                            <span>
+                              {formatTime(currentTime)} / {formatTime(duration)}
+                            </span>
+                          ) : (
+                            <>
+                              <span>{formatTime(currentTime)}</span>
+                              <span>{formatTime(duration)}</span>
+                            </>
+                          )}
+                        </div>
+                        <input
+                          className={styles.progressBar}
+                          type="range"
+                          min={0}
+                          max={duration || 0}
+                          value={currentTime}
+                          onChange={handleProgressBarChange}
+                          style={{ "--value": `${timePercentage}%` }}
+                        />
+                      </div>
+
+                      <div className={styles.controlPanel}>
                         <button
                           className={styles.button}
-                          onClick={cycleRepeatMode}
-                          title="Repeat Mode"
+                          onClick={toggleImmersiveMode}
                           style={{
-                            outlineColor:
-                              repeatMode !== "none" ? "#86AB89" : "grey",
-                            color: repeatMode !== "none" ? "#86AB89" : "grey",
+                            outlineColor: "#89A8B2",
+                            color: "#89A8B2",
                           }}
                         >
-                          {repeatMode === "track"
-                            ? "單曲循環"
-                            : repeatMode === "playlist"
-                            ? "歌單循環"
-                            : "無循環"}
+                          {immersiveMode ? "返回" : "放大"}
                         </button>
+                        {!immersiveMode && (
+                          <>
+                            <button
+                              className={styles.button}
+                              onClick={handleSetAutoPlay}
+                              title="自動播放"
+                              style={
+                                autoPlay
+                                  ? {
+                                      color: "#86AB89",
+                                    }
+                                  : {
+                                      outlineColor: "grey",
+                                      color: "grey",
+                                    }
+                              }
+                            >
+                              自動播放
+                            </button>
+                            <button
+                              className={styles.button}
+                              onClick={shufflePlaylist}
+                              title="隨機播放清單"
+                            >
+                              隨機播放清單
+                            </button>
 
-                        <button
-                          className={styles.button}
-                          onClick={togglePlayPause}
-                          title={playbackState.playing ? "暫停" : "播放"}
-                        >
-                          {playbackState.playing ? "暫停" : "播放"}
-                        </button>
-                        <button
-                          className={styles.button}
-                          onClick={playNextTrack}
-                          title="播放下一首"
-                        >
-                          下一首
-                        </button>
-                      </>
-                    )}
-                  </div>
+                            <button
+                              className={styles.button}
+                              onClick={cycleRepeatMode}
+                              title="Repeat Mode"
+                              style={{
+                                outlineColor:
+                                  repeatMode !== "none" ? "#86AB89" : "grey",
+                                color:
+                                  repeatMode !== "none" ? "#86AB89" : "grey",
+                              }}
+                            >
+                              {repeatMode === "track"
+                                ? "單曲循環"
+                                : repeatMode === "playlist"
+                                ? "歌單循環"
+                                : "無循環"}
+                            </button>
 
-                  <div className={styles.volumeControl}>
-                    <p>
-                      {!immersiveMode ? "音量：" : ""}
-                      {Math.round(playbackState.volume * 100)}%
-                    </p>
-                    <input
-                      className={styles.progressBar}
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={playbackState.volume}
-                      onChange={(e) => {
-                        setPlaybackState((prev) => ({
-                          ...prev,
-                          volume: parseFloat(e.target.value),
-                        }));
-                      }}
-                      style={{
-                        width: "25%",
-                        "--value": `${playbackState.volume * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
+                            <button
+                              className={styles.button}
+                              onClick={togglePlayPause}
+                              title={playbackState.playing ? "暫停" : "播放"}
+                            >
+                              {playbackState.playing ? "暫停" : "播放"}
+                            </button>
+                            <button
+                              className={styles.button}
+                              onClick={playNextTrack}
+                              title="播放下一首"
+                            >
+                              下一首
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <div className={styles.volumeControl}>
+                        <p>
+                          {!immersiveMode ? "音量：" : ""}
+                          {Math.round(playbackState.volume * 100)}%
+                        </p>
+                        <input
+                          className={styles.progressBar}
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={playbackState.volume}
+                          onChange={(e) => {
+                            const vol = parseFloat(e.target.value);
+                            localStorage.setItem("playerVolume", vol);
+                            setPlaybackState((prev) => ({
+                              ...prev,
+                              volume: vol,
+                            }));
+                          }}
+                          style={{
+                            width: "25%",
+                            "--value": `${playbackState.volume * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </CSSTransition>
+                </SwitchTransition>
               )}
 
               {/* 儲存的播放清單 */}

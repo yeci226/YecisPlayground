@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import styles from "../../public/css/Ytdownloader.module.css";
+const websocketHost = "http://localhost:4400";
 
 export default function YTDownloader() {
   const [url, setUrl] = useState("");
@@ -23,10 +24,11 @@ export default function YTDownloader() {
       setError("");
 
       try {
-        const response = await fetch("/api/formats", {
+        const response = await fetch(`${websocketHost}/api/yt-formats`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify({ url }),
         });
@@ -81,10 +83,11 @@ export default function YTDownloader() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/download", {
+      const response = await fetch(`${websocketHost}/api/yt-download`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           url,
@@ -99,19 +102,17 @@ export default function YTDownloader() {
 
       const blob = await response.blob();
 
-      // 從 Content-Disposition 取得檔案名稱
+      // Get filename from Content-Disposition
       const contentDisposition = response.headers.get("content-disposition");
       let filename = `download.${selectedFormat}`;
 
       if (contentDisposition) {
-        // 先嘗試解析 filename* (RFC 5987)
         const filenameStarMatch = contentDisposition.match(
           /filename\*=UTF-8''([^;]+)/i
         );
         if (filenameStarMatch) {
           filename = decodeURIComponent(filenameStarMatch[1]);
         } else {
-          // 回退到簡單的 filename
           const filenameMatch = contentDisposition.match(
             /filename="?([^";]+)"?/i
           );

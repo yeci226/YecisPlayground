@@ -39,24 +39,6 @@ const Header = () => {
   return (
     <header className={styles.header}>
       <NavLink to="/">首頁</NavLink>
-      <div className={styles.dropdown} ref={dropdownRef1}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setDropdownOpen1(!dropdownOpen1);
-          }}
-        >
-          崩壞：星穹鐵道
-        </button>
-
-        <div
-          className={`${styles.dropdownContent} ${
-            dropdownOpen1 ? styles.show : styles.hide
-          }`}
-        >
-          <NavLink to="/hsr/warp-log">躍遷紀錄</NavLink>
-        </div>
-      </div>
       {/* <div className={styles.dropdown} ref={dropdownRef2}>
         <button
           onClick={(e) => {
@@ -76,12 +58,29 @@ const Header = () => {
         </div>
       </div> */}
       <NavLink to="/player">播放器</NavLink>
-      <NavLink to="/backroom">後室</NavLink>
-      <NavLink to="/ytdownloader">YT下載</NavLink>
+      {/* <NavLink to="/backroom">後室</NavLink> */}
+      {/* <div className={styles.navContainer}> */}
+      <NavLink to="/nhentai">nHentai</NavLink>
+      {/* </div> */}
+      <div className={styles.dropdown} ref={dropdownRef1}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDropdownOpen1(!dropdownOpen1);
+          }}
+        >
+          崩壞：星穹鐵道
+        </button>
 
-      <div className={styles.navContainer}>
-        <NavLink to="/nhentai">nHentai</NavLink>
+        <div
+          className={`${styles.dropdownContent} ${
+            dropdownOpen1 ? styles.show : styles.hide
+          }`}
+        >
+          <NavLink to="/hsr/warp-log">躍遷紀錄</NavLink>
+        </div>
       </div>
+      {/* <NavLink to="/ytdownloader">YT下載</NavLink> */}
     </header>
   );
 };

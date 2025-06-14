@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import styles from "../../public/css/Backroom.module.css";
-const websocketHost = "ws://localhost:4400";
+import { config } from "../../config";
+const websocketHost = config.websocketHost;
 
 // Avatar options
 const AVATAR_OPTIONS = [

@@ -72,31 +72,35 @@
 .loggerContainer {
   flex: 1;
   position: relative;
-  justify-content: space-between;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   margin: 10px;
   padding: 10px;
   border-radius: 10px;
   outline: 2px solid var(--fallback-bc);
-  max-height: 20vh; /* 設置最大高度 */
-  text-align: left; /* 文字靠左 */
-  box-sizing: border-box; /* 包含 padding 和 border */
-  overflow-y: scroll;
+  box-sizing: border-box;
+  text-align: left;
+  max-height: 25vh;
+  overflow-y: auto;
   overflow-x: hidden;
+  background-color: var(--bc); 
+  scrollbar-width: thin;
+  scrollbar-color: #90c293 transparent;
 }
 
+/* Chrome/Safari 滾動條樣式 */
 .loggerContainer::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 
 .loggerContainer::-webkit-scrollbar-thumb {
   background: #90c293;
-  border-radius: 2.5px;
+  border-radius: 3px;
 }
 
 .loggerContainer::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .loggerContainer ul {
@@ -205,19 +209,14 @@
 }
 
 .searching {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  gap: 0.5rem;
 }
 
 .searching::before {
   content: "";
   width: 16px;
   height: 16px;
-  border: 4px solid #86ab89;
-  border-top: 4px solid transparent;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+  margin-right: 5px;
 }
 
 @keyframes spin {
@@ -228,6 +227,34 @@
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 768px) {
+  .playerContainer {
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+}
+
+.fade-enter {
+  opacity: 0;
+  transform: scale(0.98);
+}
+.fade-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.fade-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+.fade-exit-active {
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
 
 .searchResultsHeader {
   position: sticky;
@@ -665,7 +692,23 @@
   box-shadow: 0 1px 3px 3px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   display: flex;
+  display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.trackElement.active::before {
+  content: "🎶";
+  display: inline-block;
+  font-size: 1.2rem;
+  vertical-align: middle;
+  animation: pulse 1s infinite;
+  margin-right: 5px;
+}
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
 }
 
 .trackElement.active {
@@ -714,24 +757,53 @@
 
 .recommendationsContainer {
   position: fixed;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 0;
+  top: 80px;
   width: 300px;
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  overflow-y: auto;
   max-height: 80vh;
-  z-index: 100;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  background: #111;
+  border-radius: 20px;
+  border-left: 1px solid #444;
+  padding: 1rem;
+  margin-right: 1rem;
+  z-index: 1000;
 }
 
-.recommendationsList {
+.recommendationsHeader {
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.recommendationsContent {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.recommendationsContent.closed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.recommendationsContainer.active {
+  transform: translateX(0%);
+}
+
+
+.recommendationsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 1rem;
+  padding-top: 1rem;
 }
 
 .recommendationItem {

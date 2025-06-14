@@ -1,0 +1,36 @@
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  gap: 1rem;
+  background-color: #f5f5f5;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+.loadingTitle {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  width: 100%;
+}
+
+.loadingSubtitle {
+  font-size: 1rem;
+  color: #666;
+  text-align: center;
+  width: 100%;
+}
+
+.loadingText {
+  font-size: 0.9rem;
+  color: #888;
+  text-align: center;
+  width: 100%;
+} 

@@ -4,6 +4,8 @@ import styles from "../../public/css/Hsr.module.css";
 import { Copy } from "lucide-react";
 import showcase1 from "../../public/assets/hsr/showcase1.png";
 import showcase2 from "../../public/assets/hsr/showcase2.png";
+import { config } from "../../config";
+const websocketHost = config.websocketHost;
 
 export default function Hsr() {
   const [response, setResponse] = useState(null);
@@ -39,16 +41,13 @@ export default function Hsr() {
     setSelectedRecordsIndex(null);
 
     try {
-      const res = await fetch(
-        `https://fa7c-2001-df2-45c1-18-00-1.ngrok-free.app:4400/api/import-log`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ logUrl }),
-        }
-      );
+      const res = await fetch(`${websocketHost}/api/import-log`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ logUrl }),
+      });
 
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
